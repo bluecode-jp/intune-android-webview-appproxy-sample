@@ -5,6 +5,7 @@ import android.util.Log
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -48,6 +49,7 @@ class MainActivity : AppCompatActivity() {
 
         btnLog = findViewById(R.id.btnLog)
         btnLog.setOnClickListener {
+            logError("Log", "ERR")
             logInfo("Log", "Test")
             showLog()
         }
@@ -56,6 +58,12 @@ class MainActivity : AppCompatActivity() {
     private fun logInfo(tag: String, msg: String) {
         Log.d(tag, msg)
         logHistory.appendLine("[${tag}] ${msg}")
+    }
+
+    private fun logError(tag: String, msg: String) {
+        Log.e(tag, msg)
+        logHistory.appendLine("[${tag}] ${msg}")
+        Toast.makeText(this, "[${tag}] ${msg}", Toast.LENGTH_LONG).show()
     }
 
     private fun showLog() {
