@@ -1,0 +1,16 @@
+{
+  "client_id" : "87aed927-e42a-4130-ac22-88837c37c6fb",
+  "authorization_user_agent" : "DEFAULT",
+  "redirect_uri" : "msauth://com.yaso202508appproxy.intunetestapp/IXVrbW6heb0JrM%2FscrADiKf7Jmk%3D",
+  "authorities" : [
+    {
+      "type": "AAD",
+      "audience": {
+        "type": "AzureADMyOrg",
+        "tenant_id": "f95c2a9b-deec-48a4-849c-d7c81a9c221d"
+      }
+    }
+  ],
+  "account_mode": "SINGLE",
+  "broker_redirect_uri_registered": true
+}
