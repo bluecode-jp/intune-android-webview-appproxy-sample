@@ -23,9 +23,13 @@ import com.microsoft.identity.client.ISingleAccountPublicClientApplication.SignO
 import com.microsoft.identity.client.PublicClientApplication
 import com.microsoft.identity.client.SignInParameters
 import com.microsoft.identity.client.exception.MsalException
+import com.microsoft.intune.mam.client.app.MAMComponents
+import com.microsoft.intune.mam.policy.MAMEnrollmentManager
+import com.microsoft.intune.mam.policy.MAMServiceAuthenticationCallback
 
 class MainActivity : AppCompatActivity() {
     private lateinit var msalApp: ISingleAccountPublicClientApplication
+    private lateinit var mamEnrollmentManager: MAMEnrollmentManager
 
     private var currentAccount: IAccount? = null
 
@@ -33,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnAccount: Button
     private lateinit var btnToken: Button
     private lateinit var btnSignOut: Button
+    private lateinit var btnMamStatus: Button
     private lateinit var btnLoad: Button
     private lateinit var btnLog: Button
     private lateinit var webView: WebView
@@ -52,6 +57,7 @@ class MainActivity : AppCompatActivity() {
         initViews()
 
         initMsal()
+        initMam()
     }
 
     private fun initMsal() {
@@ -152,7 +158,7 @@ class MainActivity : AppCompatActivity() {
                 .build()
             val result = msalApp.acquireTokenSilent(params)
             val accessToken = result?.accessToken
-            logInfo("acquireTokenSilent", "return: ${accessToken?.take(10) ?: "null"}")
+            logInfo("acquireTokenSilent", "return: ${accessToken?.take(10) ?: "null"}", true)
             return accessToken
         } catch (exception: Exception) {
             logError("acquireTokenSilent", exception.message ?: "failed")
@@ -160,12 +166,61 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun initMam() {
+        mamEnrollmentManager = MAMComponents.get(MAMEnrollmentManager::class.java)!!
+        mamEnrollmentManager.registerAuthenticationCallback(object: MAMServiceAuthenticationCallback {
+            override fun acquireToken(upn: String, aadId: String, resourceId: String): String? {
+                logInfo("MAM.acquireToken", "upn = ${upn}, aadId = ${aadId}, resourceId = ${resourceId}")
+                val accessToken = acquireTokenSilent(listOf("${resourceId}/.default"))
+                logInfo("MAM.acquireToken", "return = ${accessToken?.take(10) ?: "null"}")
+                return accessToken
+            }
+        })
+    }
+
+    private fun mamRegisterAccount(account: IAccount) {
+        mamEnrollmentManager.registerAccountForMAM(
+            account.username,
+            account.id,
+            account.tenantId,
+            account.authority
+        )
+        logInfo("mamRegisterAccount", "success")
+    }
+
+    private fun mamUnregisterAccount(account: IAccount) {
+        mamEnrollmentManager.unregisterAccountForMAM(
+            account.username,
+            account.id
+        )
+        logInfo("mamUnregisterAccount", "success")
+    }
+
+    private fun mamShowStatus() {
+        val account = currentAccount
+
+        if (account == null) {
+            logInfo("mamShowStatus", "account is null", true)
+        } else {
+            val result = mamEnrollmentManager.getRegisteredAccountStatus(
+                account.username,
+                account.id
+            )
+            logInfo("mamShowStatus", result?.name ?: "null", true)
+        }
+    }
+
     private fun setAccount(account: IAccount) {
         currentAccount = account
+        mamRegisterAccount(account)
     }
 
     private fun clearAccount() {
+        val account = currentAccount
         currentAccount = null
+        if (account != null) {
+            mamUnregisterAccount(account)
+        }
     }
 
     private fun showAccount() {
@@ -217,6 +272,11 @@ class MainActivity : AppCompatActivity() {
             signOut()
         }
 
+        btnMamStatus = findViewById(R.id.btnMamStatus)
+        btnMamStatus.setOnClickListener {
+            mamShowStatus()
+        }
+
         btnLoad = findViewById(R.id.btnLoad)
         btnLoad.setOnClickListener {
             loadWebSite()
@@ -228,9 +288,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun logInfo(tag: String, msg: String) {
+    private fun logInfo(tag: String, msg: String, show: Boolean = false) {
         Log.d(tag, msg)
         logHistory.appendLine("[${tag}] ${msg}")
+
+        if (show) {
+            runOnUiThread {
+                Toast.makeText(this, "[${tag}] ${msg}", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun logError(tag: String, msg: String) {
