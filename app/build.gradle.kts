@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("com.microsoft.intune.mam")
 }
 
 android {
@@ -47,6 +48,11 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+
+    intunemam {
+        report = true
+        verify = true
+    }
 }
 
 dependencies {
@@ -57,6 +63,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation("com.microsoft.identity.client:msal:7.0.3")
+    implementation(files("libs/Microsoft.Intune.MAM.SDK.aar"))
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
