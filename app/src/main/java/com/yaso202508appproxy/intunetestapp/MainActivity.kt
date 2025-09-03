@@ -2,9 +2,13 @@ package com.yaso202508appproxy.intunetestapp
 
 import android.os.Bundle
 import android.util.Log
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
+import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.WorkerThread
@@ -26,6 +30,8 @@ import com.microsoft.identity.client.exception.MsalException
 import com.microsoft.intune.mam.client.app.MAMComponents
 import com.microsoft.intune.mam.policy.MAMEnrollmentManager
 import com.microsoft.intune.mam.policy.MAMServiceAuthenticationCallback
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainActivity : AppCompatActivity() {
     private lateinit var msalApp: ISingleAccountPublicClientApplication
@@ -33,9 +39,13 @@ class MainActivity : AppCompatActivity() {
 
     private var currentAccount: IAccount? = null
 
+    private var myToken: String? = null
+
     private lateinit var btnSso: Button
     private lateinit var btnAccount: Button
+    private lateinit var txtToken: EditText
     private lateinit var btnToken: Button
+    private lateinit var btnTokenShow: Button
     private lateinit var btnSignOut: Button
     private lateinit var btnMamStatus: Button
     private lateinit var btnLoad: Button
@@ -158,7 +168,7 @@ class MainActivity : AppCompatActivity() {
                 .build()
             val result = msalApp.acquireTokenSilent(params)
             val accessToken = result?.accessToken
-            logInfo("acquireTokenSilent", "return: ${accessToken?.take(10) ?: "null"}", true)
+            logInfo("acquireTokenSilent", "return: ${shortenToken(accessToken)}", true)
             return accessToken
         } catch (exception: Exception) {
             logError("acquireTokenSilent", exception.message ?: "failed")
@@ -172,7 +182,7 @@ class MainActivity : AppCompatActivity() {
             override fun acquireToken(upn: String, aadId: String, resourceId: String): String? {
                 logInfo("MAM.acquireToken", "upn = ${upn}, aadId = ${aadId}, resourceId = ${resourceId}")
                 val accessToken = acquireTokenSilent(listOf("${resourceId}/.default"))
-                logInfo("MAM.acquireToken", "return = ${accessToken?.take(10) ?: "null"}")
+                logInfo("MAM.acquireToken", "return = ${shortenToken(accessToken)}")
                 return accessToken
             }
         })
@@ -242,13 +252,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun initViews() {
         webView = findViewById(R.id.webView)
-        webView.apply {
-            webViewClient = WebViewClient()
-
-            settings.apply {
-                javaScriptEnabled = true
-            }
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            cacheMode = WebSettings.LOAD_NO_CACHE
         }
+        WebView.setWebContentsDebuggingEnabled(true)
 
         btnSso = findViewById(R.id.btnSso)
         btnSso.setOnClickListener {
@@ -260,11 +269,18 @@ class MainActivity : AppCompatActivity() {
             showAccount()
         }
 
+        txtToken = findViewById(R.id.txtToken)
+
         btnToken = findViewById(R.id.btnToken)
         btnToken.setOnClickListener {
             Thread {
-                acquireTokenSilent(listOf("User.Read"))
+                myToken = acquireTokenSilent(listOf(txtToken.text.toString()))
             }.start()
+        }
+
+        btnTokenShow = findViewById(R.id.btnShowToken)
+        btnTokenShow.setOnClickListener {
+            logInfo("btnTokenShow", shortenToken(myToken), true)
         }
 
         btnSignOut = findViewById(R.id.btnSignOut)
@@ -316,6 +332,62 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadWebSite() {
-        webView.loadUrl("https://testwebsite-blucodeinc.msappproxy.net")
+        if (myToken == null) {
+            webView.webViewClient = WebViewClient()
+            webView.loadUrl("https://testwebsite-blucodeinc.msappproxy.net")
+        } else {
+            webView.webViewClient = WebViewClient()
+//            webView.webViewClient = object : WebViewClient() {
+//                override fun shouldInterceptRequest(
+//                    view: WebView,
+//                    request: WebResourceRequest
+//                ): WebResourceResponse? {
+//                    try {
+//                        val url = request.url.toString()
+//                        val conn = URL(url).openConnection() as HttpURLConnection
+//                        conn.instanceFollowRedirects = true
+//
+//                        // Authorization ヘッダー
+//                        conn.setRequestProperty("Authorization", "Bearer $myToken")
+//                        request.requestHeaders.forEach { (k, v) ->
+//                            if (!k.equals("Authorization", true)) conn.setRequestProperty(k, v)
+//                        }
+//
+//                        conn.connect()
+//
+//                        val contentType = conn.contentType?.substringBefore(";") ?: "text/html"
+//                        val encoding = conn.contentEncoding ?: "utf-8"
+//
+//                        // ステータスコードを指定
+//                        val statusCode = conn.responseCode
+//                        val reason = conn.responseMessage ?: "OK"
+//
+//                        return WebResourceResponse(
+//                            contentType,
+//                            encoding,
+//                            statusCode,
+//                            reason,
+//                            conn.headerFields.filterKeys { it != null }
+//                                .mapValues { it.value.joinToString(",") },
+//                            conn.inputStream
+//                        )
+//
+//                    } catch (e: Exception) {
+//                        e.printStackTrace()
+//                        return super.shouldInterceptRequest(view, request)
+//                    }
+//                }
+//            }
+
+            val headers = mapOf("Authorization" to "Bearer $myToken")
+            webView.loadUrl("https://testwebsite-blucodeinc.msappproxy.net", headers)
+        }
+    }
+
+    private fun shortenToken(token: String?): String {
+        if (token == null) {
+            return "null"
+        }
+        return "${token.take(10)}...${token.takeLast(10)}"
     }
 }
