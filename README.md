@@ -165,11 +165,7 @@ android:name="com.microsoft.intune.mam.client.app.MAMApplication"
 
 ### 実装
 
-MainActivityに下記を実装
-
-- initMam()
-- mamRegisterAccount()
-- mamUnregisterAccount()
+AppProxyAuthManager.ktに、Intune+AppProxy認証機能を実装
 
 ### Entra ID APIアクセス許可設定
 

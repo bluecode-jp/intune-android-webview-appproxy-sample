@@ -6,117 +6,149 @@
     android:orientation="vertical">
 
     <!-- ネイティブ画面部分 -->
-    <LinearLayout
+    <TableLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:background="#00BCD4"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:stretchColumns="*">
 
-        <LinearLayout
+        <TableRow
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:layout_height="match_parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MSAL" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <Button
+                android:id="@+id/btnInitMsal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Init" />
 
             <Button
                 android:id="@+id/btnSso"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:text="SSO" />
 
             <Button
-                android:id="@+id/btnAccount"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="Account" />
-
-            <Button
                 android:id="@+id/btnSignOut"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="Sign Out" />
-        </LinearLayout>
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SignOut" />
+        </TableRow>
 
-        <LinearLayout
+        <TableRow
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:layout_height="match_parent">
 
-            <EditText
-                android:id="@+id/txtToken"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:ems="10"
-                android:inputType="text"
-                android:text="https://TestWebSite-blucodeinc.msappproxy.net/user_impersonation" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Account" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
 
             <Button
-                android:id="@+id/btnToken"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="Get Token" />
+                android:id="@+id/btnAccount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Show" />
 
             <Button
-                android:id="@+id/btnShowToken"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="Show Token" />
+                android:id="@+id/btnTokenAsync"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Token Async" />
 
-        </LinearLayout>
+            <Button
+                android:id="@+id/btnTokenSync"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Token Sync" />
+        </TableRow>
 
-        <LinearLayout
+        <TableRow
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:layout_height="match_parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Intune MAM" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <Button
+                android:id="@+id/btnMamInit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Init" />
+
+            <Button
+                android:id="@+id/btnMamRegister"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Register" />
 
             <Button
                 android:id="@+id/btnMamStatus"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="MAM Status" />
-        </LinearLayout>
+                android:text="Status" />
 
-        <LinearLayout
+        </TableRow>
+
+        <TableRow
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:layout_height="match_parent" >
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Etc" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
 
             <Button
-                android:id="@+id/btnLoad"
-                android:layout_width="match_parent"
+                android:id="@+id/btnWeb"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Load Web Site" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
+                android:text="Load Web" />
 
             <Button
                 android:id="@+id/btnLog"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:text="Show Log" />
-        </LinearLayout>
 
-    </LinearLayout>
+            <Button
+                android:id="@+id/btnLogClear"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Clear Log" />
+
+        </TableRow>
+    </TableLayout>
 
     <!-- 区切り線 -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#cccccc" />
 
     <!-- WebView部分 -->
     <WebView

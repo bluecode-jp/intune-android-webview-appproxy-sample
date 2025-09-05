@@ -2,57 +2,51 @@ package com.yaso202508appproxy.intunetestapp
 
 import android.os.Bundle
 import android.util.Log
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
-import androidx.annotation.WorkerThread
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.microsoft.identity.client.AcquireTokenSilentParameters
-import com.microsoft.identity.client.AuthenticationCallback
-import com.microsoft.identity.client.IAccount
-import com.microsoft.identity.client.IAuthenticationResult
-import com.microsoft.identity.client.IPublicClientApplication.ISingleAccountApplicationCreatedListener
-import com.microsoft.identity.client.ISingleAccountPublicClientApplication
-import com.microsoft.identity.client.ISingleAccountPublicClientApplication.CurrentAccountCallback
-import com.microsoft.identity.client.ISingleAccountPublicClientApplication.SignOutCallback
-import com.microsoft.identity.client.PublicClientApplication
-import com.microsoft.identity.client.SignInParameters
-import com.microsoft.identity.client.exception.MsalException
-import com.microsoft.intune.mam.client.app.MAMComponents
-import com.microsoft.intune.mam.policy.MAMEnrollmentManager
-import com.microsoft.intune.mam.policy.MAMServiceAuthenticationCallback
-import java.net.HttpURLConnection
-import java.net.URL
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var msalApp: ISingleAccountPublicClientApplication
-    private lateinit var mamEnrollmentManager: MAMEnrollmentManager
+    companion object {
+        private val scopesProxy = ScopesItem("PROXY", listOf("https://TestWebSite-blucodeinc.msappproxy.net/user_impersonation"))
+        private val scopesGraph = ScopesItem("GRAPH", listOf("User.Read"))
+        private val scopesSelectItems = listOf(
+            scopesProxy,
+            scopesGraph
+        )
+    }
 
-    private var currentAccount: IAccount? = null
+    private lateinit var scopesAdapter: ArrayAdapter<ScopesItem>
+    private var currentScopesIndex: Int = -1
 
-    private var myToken: String? = null
-
+    private lateinit var btnInitMsal: Button
     private lateinit var btnSso: Button
-    private lateinit var btnAccount: Button
-    private lateinit var txtToken: EditText
-    private lateinit var btnToken: Button
-    private lateinit var btnTokenShow: Button
     private lateinit var btnSignOut: Button
+    private lateinit var btnAccount: Button
+    private lateinit var btnTokenAsync: Button
+    private lateinit var btnTokenSync: Button
+    private lateinit var btnMamInit: Button
     private lateinit var btnMamStatus: Button
-    private lateinit var btnLoad: Button
+    private lateinit var btnMamRegister: Button
+    private lateinit var btnWeb: Button
     private lateinit var btnLog: Button
+    private lateinit var btnLogClear: Button
     private lateinit var webView: WebView
 
     private val logHistory = StringBuilder()
+    private val logger = createLogger("Main")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,262 +58,214 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
+        AppProxyAuthManager.setLogger(createLogger("APAuth"))
+        WebView.setWebContentsDebuggingEnabled(true)
         initViews()
-
-        initMsal()
-        initMam()
     }
 
-    private fun initMsal() {
-        PublicClientApplication.createSingleAccountPublicClientApplication(
-            this,
-            R.raw.msal_config,
-            object: ISingleAccountApplicationCreatedListener {
-                override fun onCreated(application: ISingleAccountPublicClientApplication) {
-                    msalApp = application
-                    logInfo("initMsal", "created")
-                }
-
-                override fun onError(exception: MsalException) {
-                    logError("initMsal", exception.message ?: "failed")
-                }
-            }
-        )
-    }
-
-    private fun sso() {
-        msalApp.getCurrentAccountAsync(object: CurrentAccountCallback {
-            override fun onAccountLoaded(activeAccount: IAccount?) {
-                if (activeAccount == null) {
-                    logInfo("sso.onAccountLoaded", "account is null")
-                    signIn()
-                } else {
-                    logInfo("sso.onAccountLoaded", "account found")
-                    setAccount(activeAccount)
-                }
-            }
-
-            override fun onAccountChanged(priorAccount: IAccount?, currentAccount: IAccount?) {
-                if (currentAccount == null) {
-                    logInfo("sso.onAccountChanged", "account is null")
-                    signIn()
-                } else {
-                    logInfo("sso.onAccountChanged", "account found")
-                    setAccount(currentAccount)
-                }
-            }
-
-            override fun onError(exception: MsalException) {
-                logError("sso.onError", exception.message ?: "failed")
-            }
-        })
-    }
-
-    private fun signIn() {
-        val params = SignInParameters.builder()
-            .withActivity(this)
-            .withScopes(listOf("User.Read"))
-            .withCallback(object: AuthenticationCallback {
-                override fun onSuccess(authenticationResult: IAuthenticationResult) {
-                    logInfo("singIn", "success")
-                    setAccount(authenticationResult.account)
-                }
-
-                override fun onError(exception: MsalException) {
-                    logError("signIn", exception.message ?: "failed")
-                }
-
-                override fun onCancel() {
-                    logError("signIn", "cancel")
-                }
-            })
-            .build()
-        msalApp.signIn(params)
-    }
-
-    private fun signOut() {
-        msalApp.signOut(object: SignOutCallback {
-            override fun onSignOut() {
-                logInfo("signOut", "success")
-                clearAccount()
-            }
-
-            override fun onError(exception: MsalException) {
-                logError("signOut", exception.message ?: "failed")
-            }
-        })
-    }
-
-    @WorkerThread
-    private fun acquireTokenSilent(scopes: List<String>): String? {
-        try {
-            logInfo("acquireTokenSilent", "scopes: ${scopes.joinToString(",")}")
-
-            val account = msalApp.currentAccount.currentAccount
-            if (account == null) {
-                logError("MSAL", "acquireTokenSilent: account is null")
-                return null
-            }
-
-            val params = AcquireTokenSilentParameters.Builder()
-                .forAccount(account)
-                .fromAuthority(account.authority)
-                .withScopes(scopes)
-                .build()
-            val result = msalApp.acquireTokenSilent(params)
-            val accessToken = result?.accessToken
-            logInfo("acquireTokenSilent", "return: ${shortenToken(accessToken)}", true)
-            return accessToken
-        } catch (exception: Exception) {
-            logError("acquireTokenSilent", exception.message ?: "failed")
-            return null
-        }
-    }
-
-    private fun initMam() {
-        mamEnrollmentManager = MAMComponents.get(MAMEnrollmentManager::class.java)!!
-        mamEnrollmentManager.registerAuthenticationCallback(object: MAMServiceAuthenticationCallback {
-            override fun acquireToken(upn: String, aadId: String, resourceId: String): String? {
-                logInfo("MAM.acquireToken", "upn = ${upn}, aadId = ${aadId}, resourceId = ${resourceId}")
-                val accessToken = acquireTokenSilent(listOf("${resourceId}/.default"))
-                logInfo("MAM.acquireToken", "return = ${shortenToken(accessToken)}")
-                return accessToken
-            }
-        })
-    }
-
-    private fun mamRegisterAccount(account: IAccount) {
-        mamEnrollmentManager.registerAccountForMAM(
-            account.username,
-            account.id,
-            account.tenantId,
-            account.authority
-        )
-        logInfo("mamRegisterAccount", "success")
-    }
-
-    private fun mamUnregisterAccount(account: IAccount) {
-        mamEnrollmentManager.unregisterAccountForMAM(
-            account.username,
-            account.id
-        )
-        logInfo("mamUnregisterAccount", "success")
-    }
-
-    private fun mamShowStatus() {
-        val account = currentAccount
-
-        if (account == null) {
-            logInfo("mamShowStatus", "account is null", true)
-        } else {
-            val result = mamEnrollmentManager.getRegisteredAccountStatus(
-                account.username,
-                account.id
-            )
-            logInfo("mamShowStatus", result?.name ?: "null", true)
-        }
-    }
-
-    private fun setAccount(account: IAccount) {
-        currentAccount = account
-        mamRegisterAccount(account)
-    }
-
-    private fun clearAccount() {
-        val account = currentAccount
-        currentAccount = null
-        if (account != null) {
-            mamUnregisterAccount(account)
-        }
-    }
-
-    private fun showAccount() {
-        val strBuilder = StringBuilder()
-        val account = currentAccount
-
-        if (account == null) {
-            strBuilder.appendLine("No Account")
-        } else {
-            strBuilder.appendLine("ID: ${account.id}")
-            strBuilder.appendLine("Username: ${account.username}")
-        }
-
-        AlertDialog.Builder(this)
-            .setMessage(strBuilder.toString())
-            .setPositiveButton("OK", null)
-            .show()
-    }
-
-    private fun initViews() {
+    private suspend fun loadWebSite() {
         webView = findViewById(R.id.webView)
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             cacheMode = WebSettings.LOAD_NO_CACHE
         }
-        WebView.setWebContentsDebuggingEnabled(true)
+        webView.webViewClient = WebViewClient()
+
+        val accessToken = AppProxyAuthManager.acquireToken(scopesProxy.scopes)
+        if (accessToken == null) {
+            webView.loadUrl("https://testwebsite-blucodeinc.msappproxy.net")
+        } else {
+            val headers = mapOf("Authorization" to "Bearer $accessToken")
+            webView.loadUrl("https://testwebsite-blucodeinc.msappproxy.net", headers)
+        }
+    }
+
+    private fun initViews() {
+        scopesAdapter = ArrayAdapter(
+            this,
+            android.R.layout.select_dialog_singlechoice,
+            scopesSelectItems
+        )
+
+        btnInitMsal = findViewById(R.id.btnInitMsal)
+        btnInitMsal.setOnClickListener {
+            try {
+                AppProxyAuthManager.initMsal(applicationContext)
+                showMsg("InitMsal Done")
+            } catch (exception: Exception) {
+                logger.error("btnInitMsal", exception)
+            }
+        }
 
         btnSso = findViewById(R.id.btnSso)
         btnSso.setOnClickListener {
-            sso()
-        }
+            val activity = this
 
-        btnAccount = findViewById(R.id.btnAccount)
-        btnAccount.setOnClickListener {
-            showAccount()
-        }
-
-        txtToken = findViewById(R.id.txtToken)
-
-        btnToken = findViewById(R.id.btnToken)
-        btnToken.setOnClickListener {
-            Thread {
-                myToken = acquireTokenSilent(listOf(txtToken.text.toString()))
-            }.start()
-        }
-
-        btnTokenShow = findViewById(R.id.btnShowToken)
-        btnTokenShow.setOnClickListener {
-            logInfo("btnTokenShow", shortenToken(myToken), true)
+            selectScopes { scopes ->
+                lifecycleScope.launch {
+                    try {
+                        AppProxyAuthManager.sso(scopes, activity)
+                    } catch (exception: Exception) {
+                        logger.error("btnSso", exception)
+                    }
+                }
+            }
         }
 
         btnSignOut = findViewById(R.id.btnSignOut)
         btnSignOut.setOnClickListener {
-            signOut()
+            lifecycleScope.launch {
+                try {
+                    AppProxyAuthManager.signOut()
+                    showMsg("SignOut Done")
+                } catch (exception: Exception) {
+                    logger.error("btnSignOut", exception)
+                }
+            }
+        }
+        
+        btnAccount = findViewById(R.id.btnAccount)
+        btnAccount.setOnClickListener {
+            lifecycleScope.launch {
+                try {
+                    val account = AppProxyAuthManager.getAccount()
+                    showMsg("btnAccount: ${account?.username}")
+                } catch (exception: Exception) {
+                    logger.error("btnAccount", exception)
+                }
+            }
+        }
+        
+        btnTokenAsync = findViewById(R.id.btnTokenAsync)
+        btnTokenAsync.setOnClickListener {
+            selectScopes { scopes ->
+                lifecycleScope.launch {
+                    try {
+                        val accessToken = AppProxyAuthManager.acquireToken(scopes)
+                        showMsg("btnTokenAsync: ${shortenToken(accessToken)}")
+                    } catch (exception: Exception) {
+                        logger.error("btnTokenAsync", exception)
+                    }
+                }
+            }
+        }
+
+        btnTokenSync = findViewById(R.id.btnTokenSync)
+        btnTokenSync.setOnClickListener {
+            selectScopes { scopes ->
+                lifecycleScope.launch {
+                    try {
+                        val accessToken = withContext(Dispatchers.IO) {
+                            AppProxyAuthManager.acquireTokenBackground(scopes)
+                        }
+                        showMsg("btnTokenSync: ${shortenToken(accessToken)}")
+                    } catch (exception: Exception) {
+                        logger.error("btnTokenSync", exception)
+                    }
+                }
+            }
+        }
+
+        btnMamInit = findViewById(R.id.btnMamInit)
+        btnMamInit.setOnClickListener {
+            try {
+                AppProxyAuthManager.initMam()
+                showMsg("btnMamInit: Done")
+            } catch (exception: Exception) {
+                logger.error("btnMamInit", exception)
+            }
         }
 
         btnMamStatus = findViewById(R.id.btnMamStatus)
         btnMamStatus.setOnClickListener {
-            mamShowStatus()
+            lifecycleScope.launch {
+                try {
+                    val status = AppProxyAuthManager.getMamStatus()
+                    showMsg("btnMamStatus: ${status?.name}")
+                } catch (exception: Exception) {
+                    logger.error("btnMamStatus", exception)
+                }
+            }
         }
 
-        btnLoad = findViewById(R.id.btnLoad)
-        btnLoad.setOnClickListener {
-            loadWebSite()
+        btnMamRegister = findViewById(R.id.btnMamRegister)
+        btnMamRegister.setOnClickListener {
+            lifecycleScope.launch {
+                try {
+                    AppProxyAuthManager.registerMam()
+                    showMsg("btnMamRegister: Done")
+                } catch (exception: Exception) {
+                    logger.error("btnMamRegister", exception)
+                }
+            }
+        }
+
+        btnWeb = findViewById(R.id.btnWeb)
+        btnWeb.setOnClickListener {
+            lifecycleScope.launch {
+                try {
+                    loadWebSite()
+                } catch (exception: Exception) {
+                    logger.error("btnWeb", exception)
+                }
+            }
         }
 
         btnLog = findViewById(R.id.btnLog)
         btnLog.setOnClickListener {
-            showLog()
+            try {
+                showLog()
+            } catch (exception: Exception) {
+                logger.error("btnLog", exception)
+            }
         }
-    }
 
-    private fun logInfo(tag: String, msg: String, show: Boolean = false) {
-        Log.d(tag, msg)
-        logHistory.appendLine("[${tag}] ${msg}")
-
-        if (show) {
-            runOnUiThread {
-                Toast.makeText(this, "[${tag}] ${msg}", Toast.LENGTH_LONG).show()
+        btnLogClear = findViewById(R.id.btnLogClear)
+        btnLogClear.setOnClickListener {
+            try {
+                logHistory.clear()
+                showMsg("btnLogClear: Done")
+            } catch (exception: Exception) {
+                logger.error("btnLogClear", exception)
             }
         }
     }
 
-    private fun logError(tag: String, msg: String) {
-        Log.e(tag, msg)
-        logHistory.appendLine("[${tag}] ${msg}")
-        runOnUiThread {
-            Toast.makeText(this, "[${tag}] ${msg}", Toast.LENGTH_LONG).show()
+    private fun selectScopes(callback: (List<String>) -> Unit) {
+        AlertDialog.Builder(this)
+            .setTitle("Select Scopes")
+            .setSingleChoiceItems(
+                scopesAdapter,
+                if (currentScopesIndex in scopesSelectItems.indices) currentScopesIndex else -1
+            ) { _, which ->
+                currentScopesIndex = which
+            }.setPositiveButton("OK") { _, _ ->
+                if (currentScopesIndex in scopesSelectItems.indices) {
+                    callback(scopesSelectItems[currentScopesIndex].scopes)
+                } else {
+                    showMsg("No Select")
+                }
+            }.show()
+    }
+
+    private fun showMsg(msg: String) {
+        lifecycleScope.launch {
+            Toast.makeText(applicationContext, msg, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun createLogger(tag: String): Logger = object : Logger {
+        override fun info(msg: String) {
+            Log.d(tag, msg)
+            logHistory.appendLine("[$tag] $msg")
+        }
+
+        override fun error(msg: String, exception: java.lang.Exception?) {
+            Log.e(tag, msg, exception)
+            val log = "[$tag] $msg ${exception ?: ""}"
+            logHistory.appendLine(log)
+            showMsg(log)
         }
     }
 
@@ -331,63 +277,17 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun loadWebSite() {
-        if (myToken == null) {
-            webView.webViewClient = WebViewClient()
-            webView.loadUrl("https://testwebsite-blucodeinc.msappproxy.net")
-        } else {
-            webView.webViewClient = WebViewClient()
-//            webView.webViewClient = object : WebViewClient() {
-//                override fun shouldInterceptRequest(
-//                    view: WebView,
-//                    request: WebResourceRequest
-//                ): WebResourceResponse? {
-//                    try {
-//                        val url = request.url.toString()
-//                        val conn = URL(url).openConnection() as HttpURLConnection
-//                        conn.instanceFollowRedirects = true
-//
-//                        // Authorization ヘッダー
-//                        conn.setRequestProperty("Authorization", "Bearer $myToken")
-//                        request.requestHeaders.forEach { (k, v) ->
-//                            if (!k.equals("Authorization", true)) conn.setRequestProperty(k, v)
-//                        }
-//
-//                        conn.connect()
-//
-//                        val contentType = conn.contentType?.substringBefore(";") ?: "text/html"
-//                        val encoding = conn.contentEncoding ?: "utf-8"
-//
-//                        // ステータスコードを指定
-//                        val statusCode = conn.responseCode
-//                        val reason = conn.responseMessage ?: "OK"
-//
-//                        return WebResourceResponse(
-//                            contentType,
-//                            encoding,
-//                            statusCode,
-//                            reason,
-//                            conn.headerFields.filterKeys { it != null }
-//                                .mapValues { it.value.joinToString(",") },
-//                            conn.inputStream
-//                        )
-//
-//                    } catch (e: Exception) {
-//                        e.printStackTrace()
-//                        return super.shouldInterceptRequest(view, request)
-//                    }
-//                }
-//            }
-
-            val headers = mapOf("Authorization" to "Bearer $myToken")
-            webView.loadUrl("https://testwebsite-blucodeinc.msappproxy.net", headers)
-        }
-    }
-
     private fun shortenToken(token: String?): String {
         if (token == null) {
             return "null"
         }
         return "${token.take(10)}...${token.takeLast(10)}"
     }
+}
+
+data class ScopesItem(
+    val displayName: String,
+    val scopes: List<String>
+) {
+    override fun toString(): String  = displayName
 }
