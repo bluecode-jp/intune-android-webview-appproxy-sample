@@ -44,6 +44,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnLog: Button
     private lateinit var btnLogClear: Button
     private lateinit var webView: WebView
+    private lateinit var btnProdInit: Button
+    private lateinit var btnProdLogin: Button
+    private lateinit var btnProdWait: Button
 
     private val logHistory = StringBuilder()
     private val logger = createLogger("Main")
@@ -90,11 +93,13 @@ class MainActivity : AppCompatActivity() {
 
         btnInitMsal = findViewById(R.id.btnInitMsal)
         btnInitMsal.setOnClickListener {
-            try {
-                AppProxyAuthManager.initMsal(applicationContext)
-                showMsg("InitMsal Done")
-            } catch (exception: Exception) {
-                logger.error("btnInitMsal", exception)
+            lifecycleScope.launch {
+                try {
+                    val result = AppProxyAuthManager.initMsal(applicationContext)
+                    showMsg("btnInitMsal: ${isSuccessToString(result)}")
+                } catch (exception: Exception) {
+                    logger.error("btnInitMsal", exception)
+                }
             }
         }
 
@@ -105,7 +110,8 @@ class MainActivity : AppCompatActivity() {
             selectScopes { scopes ->
                 lifecycleScope.launch {
                     try {
-                        AppProxyAuthManager.sso(scopes, activity)
+                        val account = AppProxyAuthManager.sso(scopes, activity)
+                        showMsg("btnSso: ${isSuccessToString(account != null)}")
                     } catch (exception: Exception) {
                         logger.error("btnSso", exception)
                     }
@@ -117,8 +123,8 @@ class MainActivity : AppCompatActivity() {
         btnSignOut.setOnClickListener {
             lifecycleScope.launch {
                 try {
-                    AppProxyAuthManager.signOut()
-                    showMsg("SignOut Done")
+                    val result = AppProxyAuthManager.cleanupAccount()
+                    showMsg("btnSignOut: ${isSuccessToString(result)}")
                 } catch (exception: Exception) {
                     logger.error("btnSignOut", exception)
                 }
@@ -170,10 +176,22 @@ class MainActivity : AppCompatActivity() {
         btnMamInit = findViewById(R.id.btnMamInit)
         btnMamInit.setOnClickListener {
             try {
-                AppProxyAuthManager.initMam()
-                showMsg("btnMamInit: Done")
+                val result = AppProxyAuthManager.initMam()
+                showMsg("btnMamInit: ${isSuccessToString(result)}")
             } catch (exception: Exception) {
                 logger.error("btnMamInit", exception)
+            }
+        }
+
+        btnMamRegister = findViewById(R.id.btnMamRegister)
+        btnMamRegister.setOnClickListener {
+            lifecycleScope.launch {
+                try {
+                    val result = AppProxyAuthManager.registerMam()
+                    showMsg("btnMamRegister: ${isSuccessToString(result)}")
+                } catch (exception: Exception) {
+                    logger.error("btnMamRegister", exception)
+                }
             }
         }
 
@@ -185,18 +203,6 @@ class MainActivity : AppCompatActivity() {
                     showMsg("btnMamStatus: ${status?.name}")
                 } catch (exception: Exception) {
                     logger.error("btnMamStatus", exception)
-                }
-            }
-        }
-
-        btnMamRegister = findViewById(R.id.btnMamRegister)
-        btnMamRegister.setOnClickListener {
-            lifecycleScope.launch {
-                try {
-                    AppProxyAuthManager.registerMam()
-                    showMsg("btnMamRegister: Done")
-                } catch (exception: Exception) {
-                    logger.error("btnMamRegister", exception)
                 }
             }
         }
@@ -228,6 +234,48 @@ class MainActivity : AppCompatActivity() {
                 showMsg("btnLogClear: Done")
             } catch (exception: Exception) {
                 logger.error("btnLogClear", exception)
+            }
+        }
+
+        btnProdInit = findViewById(R.id.btnProdInit)
+        btnProdInit.setOnClickListener {
+            lifecycleScope.launch {
+                try {
+                    val result = AppProxyAuthManager.initialize(applicationContext)
+                    showMsg("btnProdInit: ${isSuccessToString(result)}")
+                } catch (exception: Exception) {
+                    logger.error("btnProdInit", exception)
+                }
+            }
+        }
+
+        btnProdLogin = findViewById(R.id.btnProdLogin)
+        btnProdLogin.setOnClickListener {
+            val activity = this
+
+            selectScopes { scopes ->
+                lifecycleScope.launch {
+                    try {
+                        val result = AppProxyAuthManager.setupAccount(scopes, activity)
+                        showMsg("btnProdLogin: ${isSuccessToString(result)}")
+                    } catch (exception: Exception) {
+                        logger.error("btnProdLogin", exception)
+                    }
+                }
+            }
+        }
+
+        btnProdWait = findViewById(R.id.btnProdWait)
+        btnProdWait.setOnClickListener {
+            selectScopes { scopes ->
+                lifecycleScope.launch {
+                    try {
+                        AppProxyAuthManager.waitForAppProxyAccessReady(scopes, 5000L, 500L)
+                        showMsg("btnProdWait: success")
+                    } catch (exception: Exception) {
+                        logger.error("btnProdWait", exception)
+                    }
+                }
             }
         }
     }
@@ -283,6 +331,8 @@ class MainActivity : AppCompatActivity() {
         }
         return "${token.take(10)}...${token.takeLast(10)}"
     }
+
+    private fun isSuccessToString(result: Boolean) = if (result) "success" else "fail"
 }
 
 data class ScopesItem(

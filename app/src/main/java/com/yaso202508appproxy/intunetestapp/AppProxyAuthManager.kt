@@ -18,31 +18,98 @@ import com.microsoft.identity.client.exception.MsalException
 import com.microsoft.intune.mam.client.app.MAMComponents
 import com.microsoft.intune.mam.policy.MAMEnrollmentManager
 import com.microsoft.intune.mam.policy.MAMServiceAuthenticationCallback
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.resume
 
 object AppProxyAuthManager {
     private var msalApp: ISingleAccountPublicClientApplication? = null
     private var mamEnrollmentManager: MAMEnrollmentManager? = null
 
+    @ForInvestigationOnly
     private var logger: Logger? = null
 
-    fun initMsal(context: Context) {
+    suspend fun initialize(context: Context): Boolean {
+        val app = createMsalApp(context)
+        if (app == null) {
+            return false
+        }
+        msalApp = app
+
+        val manager = createMamEnrollManager()
+        if (manager == null) {
+            return false
+        }
+        mamEnrollmentManager = manager
+
+        return true
+    }
+
+    suspend fun setupAccount(
+        signInScopes: List<String>,
+        activity: Activity
+    ): Boolean {
+        val account = sso(signInScopes, activity)
+        if (account == null) {
+            return false
+        }
+
+        val result = registerMam()
+        return result
+    }
+
+    suspend fun waitForAppProxyAccessReady(
+        appProxyScopes: List<String>,
+        timeOutMillis: Long,
+        intervalMillis: Long
+    ) {
+        withTimeout(timeOutMillis) {
+            while (getMamStatus() != MAMEnrollmentManager.Result.ENROLLMENT_SUCCEEDED) {
+                delay(intervalMillis)
+            }
+
+            while (acquireToken(appProxyScopes) == null) {
+                delay(intervalMillis)
+            }
+        }
+    }
+
+    suspend fun cleanupAccount(): Boolean {
+        val account = signOut()
+        if (account == null) {
+            return false
+        }
+
+        unregisterMam(account)
+        return true
+    }
+
+    private suspend fun createMsalApp(
+        context: Context
+    ): ISingleAccountPublicClientApplication? = suspendCancellableCoroutine { continuation ->
         PublicClientApplication.createSingleAccountPublicClientApplication(
             context,
             R.raw.msal_config,
             object : ISingleAccountApplicationCreatedListener {
                 override fun onCreated(application: ISingleAccountPublicClientApplication?) {
-                    msalApp = application
-                    logger?.info("initMsal.onCreated")
+                    logger?.info("createMsalApp.onCreated")
+                    continuation.resume(application)
                 }
 
                 override fun onError(exception: MsalException?) {
-                    logger?.error("initMsal.onError", exception)
+                    logger?.error("createMsalApp.onError", exception)
+                    continuation.resume(null)
                 }
-
             }
         )
+    }
+
+    @ForInvestigationOnly
+    suspend fun initMsal(context: Context): Boolean {
+        val app = createMsalApp(context)
+        msalApp = app
+        return app != null
     }
 
     suspend fun getAccount(): IAccount? {
@@ -71,67 +138,80 @@ object AppProxyAuthManager {
         }
     }
 
-    suspend fun sso(scopes: List<String>, activity: Activity) {
-        val account = getAccount()
-
-        if (account == null) {
-            logger?.info("sso: account is null")
-            signIn(scopes, activity)
-        } else {
-            logger?.info("sso: account is ${account.username}")
-        }
-    }
-
-    fun signIn(scopes: List<String>, activity: Activity) {
+    private suspend fun signIn(scopes: List<String>, activity: Activity): IAccount? {
         val app = msalApp
         if (app == null) {
             logger?.error("signIn: msal app is null")
-            return
+            return null
         }
 
-        val params = SignInParameters.builder()
-            .withActivity(activity)
-            .withScopes(scopes)
-            .withCallback(object : AuthenticationCallback {
-                override fun onSuccess(authenticationResult: IAuthenticationResult) {
-                    logger?.info("signIn.onSuccess: account is ${authenticationResult.account.username}")
-                }
+        return suspendCancellableCoroutine { continuation ->
+            app.signIn(
+                SignInParameters.builder()
+                    .withActivity(activity)
+                    .withScopes(scopes)
+                    .withCallback(object : AuthenticationCallback {
+                        override fun onSuccess(authenticationResult: IAuthenticationResult) {
+                            val account = authenticationResult.account
+                            logger?.info("signIn.onSuccess: account is ${account.username}")
+                            continuation.resume(account)
+                        }
 
-                override fun onError(exception: MsalException) {
-                    logger?.error("signIn.onError", exception)
-                }
+                        override fun onError(exception: MsalException) {
+                            logger?.error("signIn.onError", exception)
+                            continuation.resume(null)
+                        }
 
-                override fun onCancel() {
-                    logger?.error("signIn.onCancel")
-                }
-            })
-            .build()
-        app.signIn(params)
+                        override fun onCancel() {
+                            logger?.error("signIn.onCancel")
+                            continuation.resume(null)
+                        }
+                    })
+                    .build()
+            )
+        }
     }
 
-    suspend fun signOut() {
+    suspend fun sso(scopes: List<String>, activity: Activity): IAccount? {
+        var account = getAccount()
+
+        if (account == null) {
+            logger?.info("sso: no account -> sign in")
+            account = signIn(scopes, activity)
+        } else {
+            logger?.info("sso: account already exists")
+        }
+
+        logger?.info("sso: account is ${account?.username}")
+        return account
+    }
+
+    private suspend fun signOut(): IAccount? {
         val app = msalApp
         if (app == null) {
             logger?.error("signOut: msal app is null")
-            return
+            return null
         }
 
         val account = getAccount()
         if (account == null) {
             logger?.error("signOut: account is null")
-            return
+            return null
         }
 
-        app.signOut(object : SignOutCallback {
-            override fun onSignOut() {
-                logger?.info( "signOut.onSignOut")
-                unregisterMam(account)
-            }
+        return suspendCancellableCoroutine { continuation ->
+            app.signOut(object : SignOutCallback {
+                override fun onSignOut() {
+                    logger?.info( "signOut.onSignOut")
+                    continuation.resume(account)
+                }
 
-            override fun onError(exception: MsalException) {
-                logger?.error("signOut.onError", exception)
-            }
-        })
+                override fun onError(exception: MsalException) {
+                    logger?.error("signOut.onError", exception)
+                    continuation.resume(null)
+                }
+            })
+        }
     }
 
     suspend fun acquireToken(scopes: List<String>): String? {
@@ -206,11 +286,11 @@ object AppProxyAuthManager {
         }
     }
 
-    fun initMam() {
+    fun createMamEnrollManager(): MAMEnrollmentManager? {
         val manager = MAMComponents.get(MAMEnrollmentManager::class.java)
         if (manager == null) {
-            logger?.error("initMam: MAMEnrollmentManager Not Found")
-            return
+            logger?.error("createMamEnrollManager: MAMEnrollmentManager Not Found")
+            return null
         }
 
         manager.registerAuthenticationCallback(object : MAMServiceAuthenticationCallback {
@@ -221,21 +301,29 @@ object AppProxyAuthManager {
                 return accessToken
             }
         })
-        mamEnrollmentManager = manager
-        logger?.info("initMam: Done")
+
+        logger?.info("createMamEnrollManager: created")
+        return manager
     }
 
-    suspend fun registerMam() {
+    @ForInvestigationOnly
+    fun initMam(): Boolean {
+        val manager = createMamEnrollManager()
+        mamEnrollmentManager = manager
+        return manager != null
+    }
+
+    suspend fun registerMam(): Boolean {
         val manager = mamEnrollmentManager
         if (manager == null) {
-            logger?.error("registerMam: mam enroll manager is null")
-            return
+            logger?.error("registerMam: MAMEnrollmentManager is null")
+            return false
         }
 
         val account = getAccount()
         if (account == null) {
             logger?.error("registerMam: account is null")
-            return
+            return false
         }
 
         manager.registerAccountForMAM(
@@ -245,13 +333,14 @@ object AppProxyAuthManager {
             account.authority
         )
         logger?.info("registerMam: Done")
+        return true
     }
 
-    private fun unregisterMam(account: IAccount) {
+    private fun unregisterMam(account: IAccount): Boolean {
         val manager = mamEnrollmentManager
         if (manager == null) {
-            logger?.error("unregisterMam: mam enroll manager is null")
-            return
+            logger?.error("unregisterMam: MAMEnrollmentManager is null")
+            return false
         }
 
         manager.unregisterAccountForMAM(
@@ -259,12 +348,13 @@ object AppProxyAuthManager {
             account.id
         )
         logger?.info("unregisterMam: Done")
+        return true
     }
 
     suspend fun getMamStatus(): MAMEnrollmentManager.Result? {
         val manager = mamEnrollmentManager
         if (manager == null) {
-            logger?.error("getMamStatus: mam enroll manager is null")
+            logger?.error("getMamStatus: MAMEnrollmentManager is null")
             return null
         }
 
@@ -282,11 +372,12 @@ object AppProxyAuthManager {
         return result
     }
 
-
+    @ForInvestigationOnly
     fun setLogger(logger: Logger) {
         this.logger = logger
     }
 
+    @ForInvestigationOnly
     private fun shortenToken(token: String?): String {
         if (token == null) {
             return "null"

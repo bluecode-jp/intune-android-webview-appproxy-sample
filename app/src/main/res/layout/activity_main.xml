@@ -146,11 +146,46 @@
                 android:text="Clear Log" />
 
         </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" >
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="for Production" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" >
+
+            <Button
+                android:id="@+id/btnProdInit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Init App" />
+
+            <Button
+                android:id="@+id/btnProdLogin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Setup Account" />
+
+            <Button
+                android:id="@+id/btnProdWait"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Wait Ready" />
+        </TableRow>
+
     </TableLayout>
 
     <!-- 区切り線 -->
 
     <!-- WebView部分 -->
+
     <WebView
         android:id="@+id/webView"
         android:layout_width="match_parent"
