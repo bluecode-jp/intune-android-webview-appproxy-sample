@@ -2,9 +2,7 @@ package com.yaso202508appproxy.intunetestapp
 
 import android.os.Bundle
 import android.util.Log
-import android.webkit.WebSettings
 import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -17,6 +15,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var webViewWrapper: WebViewWrapper
+
     private lateinit var btnInitMsal: Button
     private lateinit var btnSso: Button
     private lateinit var btnSignOut: Button
@@ -29,7 +29,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnWeb: Button
     private lateinit var btnLog: Button
     private lateinit var btnLogClear: Button
-    private lateinit var webView: WebView
     private lateinit var btnProdInit: Button
     private lateinit var btnProdLogin: Button
     private lateinit var btnProdWait: Button
@@ -54,25 +53,10 @@ class MainActivity : AppCompatActivity() {
         initViews()
     }
 
-    private suspend fun loadWebSite() {
-        webView = findViewById(R.id.webView)
-        webView.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            cacheMode = WebSettings.LOAD_NO_CACHE
-        }
-        webView.webViewClient = WebViewClient()
-
-        val accessToken = AppProxyAuthManager.acquireTokenAsync(AuthScopes.PROXY.scopes)
-        if (accessToken == null) {
-            webView.loadUrl(BuildConfig.PROXY_URL)
-        } else {
-            val headers = mapOf("Authorization" to "Bearer $accessToken")
-            webView.loadUrl(BuildConfig.PROXY_URL, headers)
-        }
-    }
-
     private fun initViews() {
+        webViewWrapper = WebViewWrapper(findViewById(R.id.webView))
+        webViewWrapper.setLogger(createLogger("WebView"))
+
         authScopesSelectDialog = AuthScopesSelectDialog(this)
         
         btnInitMsal = findViewById(R.id.btnInitMsal)
@@ -193,7 +177,7 @@ class MainActivity : AppCompatActivity() {
         btnWeb.setOnClickListener {
             lifecycleScope.launch {
                 try {
-                    loadWebSite()
+                    webViewWrapper.load()
                 } catch (exception: Exception) {
                     logger.error("btnWeb", exception)
                 }
