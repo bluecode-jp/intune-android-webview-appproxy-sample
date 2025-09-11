@@ -30,11 +30,7 @@ class WebViewWrapper(private val webView: WebView) {
                 ): WebResourceResponse? {
                     return try {
                         if (request != null && shouldAddHeaders(request)) {
-                            val token = runBlocking(Dispatchers.IO) {
-                                withTimeout(1000L) {
-                                    AppProxyAuthManager.acquireTokenSync(AuthScopes.PROXY.scopes)
-                                }
-                            }
+                            val token = AccessTokenManager.acquire(AuthScopes.PROXY.scopes)
 
                             return if (token == null) {
                                 super.shouldInterceptRequest(view, request)
