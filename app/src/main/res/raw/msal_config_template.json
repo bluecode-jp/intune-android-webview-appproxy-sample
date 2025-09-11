@@ -1,13 +1,13 @@
 {
-  "client_id" : "e449fa50-7af4-4842-8e36-b2f39f29f70b",
+  "client_id" : "{{CLIENT_ID}}",
   "authorization_user_agent" : "DEFAULT",
-  "redirect_uri" : "msauth://com.yaso202508appproxy.intunetestapp/IXVrbW6heb0JrM%2FscrADiKf7Jmk%3D",
+  "redirect_uri" : "{{REDIRECT_URI}}",
   "authorities" : [
     {
       "type": "AAD",
       "audience": {
         "type": "AzureADMyOrg",
-        "tenant_id": "f95c2a9b-deec-48a4-849c-d7c81a9c221d"
+        "tenant_id": "{{TENANT_ID}}"
       }
     }
   ],

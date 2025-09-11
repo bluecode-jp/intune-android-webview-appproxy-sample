@@ -69,7 +69,7 @@ object AppProxyAuthManager {
                 delay(intervalMillis)
             }
 
-            while (acquireToken(appProxyScopes) == null) {
+            while (acquireTokenAsync(appProxyScopes) == null) {
                 delay(intervalMillis)
             }
         }
@@ -214,20 +214,20 @@ object AppProxyAuthManager {
         }
     }
 
-    suspend fun acquireToken(scopes: List<String>): String? {
+    suspend fun acquireTokenAsync(scopes: List<String>): String? {
         val app = msalApp
         if (app == null) {
-            logger?.error("acquireToken: msal app is null")
+            logger?.error("acquireTokenAsync: msal app is null")
             return null
         }
 
         val account = getAccount()
         if (account == null) {
-            logger?.error("acquireToken: account is null")
+            logger?.error("acquireTokenAsync: account is null")
             return null
         }
 
-        logger?.info("acquireToken: scopes = ${scopes.joinToString(",")}")
+        logger?.info("acquireTokenAsync: scopes = ${scopes.joinToString(",")}")
 
         return suspendCancellableCoroutine { continuation ->
             app.acquireTokenSilentAsync(
@@ -238,12 +238,12 @@ object AppProxyAuthManager {
                     .withCallback(object : SilentAuthenticationCallback {
                         override fun onSuccess(authenticationResult: IAuthenticationResult) {
                             val accessToken = authenticationResult.accessToken
-                            logger?.info("acquireToken.onSuccess: ${shortenToken(accessToken)}")
+                            logger?.info("acquireTokenAsync.onSuccess: ${shortenToken(accessToken)}")
                             continuation.resume(accessToken)
                         }
 
                         override fun onError(exception: MsalException) {
-                            logger?.error("acquireToken.onError", exception)
+                            logger?.error("acquireTokenAsync.onError", exception)
                             continuation.resume(null)
                         }
 
@@ -254,21 +254,21 @@ object AppProxyAuthManager {
     }
 
     @WorkerThread
-    fun acquireTokenBackground(scopes: List<String>): String? {
+    fun acquireTokenSync(scopes: List<String>): String? {
         try {
             val app = msalApp
             if (app == null) {
-                logger?.error("acquireTokenBackground: msal app is null")
+                logger?.error("acquireTokenSync: msal app is null")
                 return null
             }
 
             val account = app.currentAccount.currentAccount
             if (account == null) {
-                logger?.error("acquireTokenBackground: account is null")
+                logger?.error("acquireTokenSync: account is null")
                 return null
             }
 
-            logger?.info("acquireTokenBackground: scopes = ${scopes.joinToString(",")}")
+            logger?.info("acquireTokenSync: scopes = ${scopes.joinToString(",")}")
 
             val result = app.acquireTokenSilent(
                 AcquireTokenSilentParameters.Builder()
@@ -278,10 +278,10 @@ object AppProxyAuthManager {
                     .build()
             )
             val accessToken = result.accessToken
-            logger?.info("acquireTokenBackground: ${shortenToken(accessToken)}")
+            logger?.info("acquireTokenSync: ${shortenToken(accessToken)}")
             return accessToken
         } catch (exception: Exception) {
-            logger?.error("acquireTokenBackground", exception)
+            logger?.error("acquireTokenSync", exception)
             return null
         }
     }
@@ -296,7 +296,7 @@ object AppProxyAuthManager {
         manager.registerAuthenticationCallback(object : MAMServiceAuthenticationCallback {
             override fun acquireToken(upn: String, aadId: String, resourceId: String): String? {
                 logger?.info("MAM.acquireToken: upn = $upn, aadId = $aadId, resourceId = $resourceId")
-                val accessToken = acquireTokenBackground(listOf("$resourceId/.default"))
+                val accessToken = acquireTokenSync(listOf("$resourceId/.default"))
                 logger?.info("MAM.acquireToken: return = ${shortenToken(accessToken)}")
                 return accessToken
             }

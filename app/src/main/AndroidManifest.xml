@@ -35,8 +35,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="msauth"
-                    android:host="com.yaso202508appproxy.intunetestapp"
-                    android:path="/IXVrbW6heb0JrM/scrADiKf7Jmk=" />
+                    android:host="${msAuthHost}"
+                    android:path="${msAuthPath}" />
             </intent-filter>
         </activity>
     </application>

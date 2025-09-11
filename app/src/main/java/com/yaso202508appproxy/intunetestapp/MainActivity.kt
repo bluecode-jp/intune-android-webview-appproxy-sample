@@ -16,11 +16,10 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
     companion object {
-        private val scopesProxy = ScopesItem("PROXY", listOf("https://TestWebSite-blucodeinc.msappproxy.net/user_impersonation"))
+        private val scopesProxy = ScopesItem("PROXY", listOf(BuildConfig.PROXY_SCOPE))
         private val scopesGraph = ScopesItem("GRAPH", listOf("User.Read"))
         private val scopesSelectItems = listOf(
             scopesProxy,
@@ -75,12 +74,12 @@ class MainActivity : AppCompatActivity() {
         }
         webView.webViewClient = WebViewClient()
 
-        val accessToken = AppProxyAuthManager.acquireToken(scopesProxy.scopes)
+        val accessToken = AppProxyAuthManager.acquireTokenAsync(scopesProxy.scopes)
         if (accessToken == null) {
-            webView.loadUrl("https://testwebsite-blucodeinc.msappproxy.net")
+            webView.loadUrl(BuildConfig.PROXY_URL)
         } else {
             val headers = mapOf("Authorization" to "Bearer $accessToken")
-            webView.loadUrl("https://testwebsite-blucodeinc.msappproxy.net", headers)
+            webView.loadUrl(BuildConfig.PROXY_URL, headers)
         }
     }
 
@@ -148,7 +147,7 @@ class MainActivity : AppCompatActivity() {
             selectScopes { scopes ->
                 lifecycleScope.launch {
                     try {
-                        val accessToken = AppProxyAuthManager.acquireToken(scopes)
+                        val accessToken = AppProxyAuthManager.acquireTokenAsync(scopes)
                         showMsg("btnTokenAsync: ${shortenToken(accessToken)}")
                     } catch (exception: Exception) {
                         logger.error("btnTokenAsync", exception)
@@ -160,11 +159,9 @@ class MainActivity : AppCompatActivity() {
         btnTokenSync = findViewById(R.id.btnTokenSync)
         btnTokenSync.setOnClickListener {
             selectScopes { scopes ->
-                lifecycleScope.launch {
+                lifecycleScope.launch(Dispatchers.IO) {
                     try {
-                        val accessToken = withContext(Dispatchers.IO) {
-                            AppProxyAuthManager.acquireTokenBackground(scopes)
-                        }
+                        val accessToken = AppProxyAuthManager.acquireTokenSync(scopes)
                         showMsg("btnTokenSync: ${shortenToken(accessToken)}")
                     } catch (exception: Exception) {
                         logger.error("btnTokenSync", exception)
