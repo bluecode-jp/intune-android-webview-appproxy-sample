@@ -5,7 +5,6 @@ import android.util.Log
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -18,18 +17,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-    companion object {
-        private val scopesProxy = ScopesItem("PROXY", listOf(BuildConfig.PROXY_SCOPE))
-        private val scopesGraph = ScopesItem("GRAPH", listOf("User.Read"))
-        private val scopesSelectItems = listOf(
-            scopesProxy,
-            scopesGraph
-        )
-    }
-
-    private lateinit var scopesAdapter: ArrayAdapter<ScopesItem>
-    private var currentScopesIndex: Int = -1
-
     private lateinit var btnInitMsal: Button
     private lateinit var btnSso: Button
     private lateinit var btnSignOut: Button
@@ -46,6 +33,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnProdInit: Button
     private lateinit var btnProdLogin: Button
     private lateinit var btnProdWait: Button
+
+    private lateinit var authScopesSelectDialog: AuthScopesSelectDialog
 
     private val logHistory = StringBuilder()
     private val logger = createLogger("Main")
@@ -74,7 +63,7 @@ class MainActivity : AppCompatActivity() {
         }
         webView.webViewClient = WebViewClient()
 
-        val accessToken = AppProxyAuthManager.acquireTokenAsync(scopesProxy.scopes)
+        val accessToken = AppProxyAuthManager.acquireTokenAsync(AuthScopes.PROXY.scopes)
         if (accessToken == null) {
             webView.loadUrl(BuildConfig.PROXY_URL)
         } else {
@@ -84,12 +73,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initViews() {
-        scopesAdapter = ArrayAdapter(
-            this,
-            android.R.layout.select_dialog_singlechoice,
-            scopesSelectItems
-        )
-
+        authScopesSelectDialog = AuthScopesSelectDialog(this)
+        
         btnInitMsal = findViewById(R.id.btnInitMsal)
         btnInitMsal.setOnClickListener {
             lifecycleScope.launch {
@@ -106,7 +91,7 @@ class MainActivity : AppCompatActivity() {
         btnSso.setOnClickListener {
             val activity = this
 
-            selectScopes { scopes ->
+            authScopesSelectDialog.show { scopes ->
                 lifecycleScope.launch {
                     try {
                         val account = AppProxyAuthManager.sso(scopes, activity)
@@ -144,7 +129,7 @@ class MainActivity : AppCompatActivity() {
         
         btnTokenAsync = findViewById(R.id.btnTokenAsync)
         btnTokenAsync.setOnClickListener {
-            selectScopes { scopes ->
+            authScopesSelectDialog.show { scopes ->
                 lifecycleScope.launch {
                     try {
                         val accessToken = AppProxyAuthManager.acquireTokenAsync(scopes)
@@ -158,7 +143,7 @@ class MainActivity : AppCompatActivity() {
 
         btnTokenSync = findViewById(R.id.btnTokenSync)
         btnTokenSync.setOnClickListener {
-            selectScopes { scopes ->
+            authScopesSelectDialog.show { scopes ->
                 lifecycleScope.launch(Dispatchers.IO) {
                     try {
                         val accessToken = AppProxyAuthManager.acquireTokenSync(scopes)
@@ -250,7 +235,7 @@ class MainActivity : AppCompatActivity() {
         btnProdLogin.setOnClickListener {
             val activity = this
 
-            selectScopes { scopes ->
+            authScopesSelectDialog.show { scopes ->
                 lifecycleScope.launch {
                     try {
                         val result = AppProxyAuthManager.setupAccount(scopes, activity)
@@ -264,7 +249,7 @@ class MainActivity : AppCompatActivity() {
 
         btnProdWait = findViewById(R.id.btnProdWait)
         btnProdWait.setOnClickListener {
-            selectScopes { scopes ->
+            authScopesSelectDialog.show { scopes ->
                 lifecycleScope.launch {
                     try {
                         AppProxyAuthManager.waitForAppProxyAccessReady(scopes, 5000L, 500L)
@@ -275,23 +260,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    private fun selectScopes(callback: (List<String>) -> Unit) {
-        AlertDialog.Builder(this)
-            .setTitle("Select Scopes")
-            .setSingleChoiceItems(
-                scopesAdapter,
-                if (currentScopesIndex in scopesSelectItems.indices) currentScopesIndex else -1
-            ) { _, which ->
-                currentScopesIndex = which
-            }.setPositiveButton("OK") { _, _ ->
-                if (currentScopesIndex in scopesSelectItems.indices) {
-                    callback(scopesSelectItems[currentScopesIndex].scopes)
-                } else {
-                    showMsg("No Select")
-                }
-            }.show()
     }
 
     private fun showMsg(msg: String) {
@@ -330,11 +298,4 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun isSuccessToString(result: Boolean) = if (result) "success" else "fail"
-}
-
-data class ScopesItem(
-    val displayName: String,
-    val scopes: List<String>
-) {
-    override fun toString(): String  = displayName
 }
