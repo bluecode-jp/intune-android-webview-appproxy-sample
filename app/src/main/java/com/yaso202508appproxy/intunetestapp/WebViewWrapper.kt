@@ -1,14 +1,10 @@
 package com.yaso202508appproxy.intunetestapp
 
 import android.annotation.SuppressLint
-import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -24,12 +20,23 @@ class WebViewWrapper(private val webView: WebView) {
             }
 
             webViewClient = object: WebViewClient() {
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+
+                    if (view != null && url != null && isProxyOrigin(url)) {
+                        val script = JavascriptLoader.loadContent(view.context, "intercept_request.js")
+                        if (script != null) {
+                            view.evaluateJavascript(script, null)
+                        }
+                    }
+                }
+
                 override fun shouldInterceptRequest(
                     view: WebView?,
                     request: WebResourceRequest?
                 ): WebResourceResponse? {
                     return try {
-                        if (request != null && shouldAddHeaders(request)) {
+                        if (request != null && shouldAddToken(request)) {
                             val token = AccessTokenManager.acquire(AuthScopes.PROXY.scopes)
 
                             return if (token == null) {
@@ -47,10 +54,20 @@ class WebViewWrapper(private val webView: WebView) {
                 }
             }
         }
+
+        webView.addJavascriptInterface(JavascriptInterface, "Android")
     }
 
-    private fun shouldAddHeaders(request: WebResourceRequest): Boolean {
-        if (!request.url.toString().startsWith(BuildConfig.PROXY_ORIGIN)) {
+    private fun isProxyOrigin(url: String): Boolean = url.startsWith(BuildConfig.PROXY_ORIGIN, true)
+
+    private fun shouldAddToken(request: WebResourceRequest): Boolean {
+        if (!isProxyOrigin(request.url.toString())) {
+            return false
+        }
+
+        if (request.requestHeaders.keys.any {
+            it.equals("X-Token-Added", true)
+        }) {
             return false
         }
 
