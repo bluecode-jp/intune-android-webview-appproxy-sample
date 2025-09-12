@@ -66,8 +66,8 @@ android {
         applicationId = getConfigValue("application.id", "com.yaso202508appproxy.intunetestapp")
         minSdk = 24
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.0.6"
+        versionCode = 7
+        versionName = "0.0.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         signingConfig = signingConfigs.getByName("debug")
