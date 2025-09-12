@@ -1,4 +1,4 @@
-package com.yaso202508appproxy.intunetestapp
+package com.yaso202508appproxy.intunetestapp.web
 
 import android.content.Context
 

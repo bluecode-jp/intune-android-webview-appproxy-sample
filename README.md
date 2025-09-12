@@ -16,7 +16,6 @@
   - [MAMApplication設定](#mamapplication設定)
 - [MAM統合](#mam統合)
   - [実装](#実装-1)
-  - [Entra ID APIアクセス許可設定](#entra-id-apiアクセス許可設定)
 
 ## 手順
 
@@ -111,12 +110,7 @@ AndroidManifest.xmlを編集
 
 ### 実装
 
-MainActivityに下記を実装
-
-- initMsal()
-- sso()
-- signIn()
-- acquireTokenSilent()
+com.yaso202508appproxy.intunetestapp.authパッケージに実装
 
 ## Intune App SDK導入
 
@@ -172,8 +166,4 @@ android:name="com.microsoft.intune.mam.client.app.MAMApplication"
 
 ### 実装
 
-AppProxyAuthManager.ktに、Intune+AppProxy認証機能を実装
-
-### Entra ID APIアクセス許可設定
-
-Microsoft Mobile Application Management を追加して管理者合意
+com.yaso202508appproxy.intunetestapp.authパッケージに実装

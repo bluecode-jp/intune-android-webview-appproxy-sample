@@ -1,17 +1,20 @@
-package com.yaso202508appproxy.intunetestapp
+package com.yaso202508appproxy.intunetestapp.web
 
 import android.annotation.SuppressLint
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.yaso202508appproxy.intunetestapp.AppLogger
+import com.yaso202508appproxy.intunetestapp.AuthScopes
+import com.yaso202508appproxy.intunetestapp.BuildConfig
+import com.yaso202508appproxy.intunetestapp.auth.AuthService
 import java.net.HttpURLConnection
 import java.net.URL
 
 @SuppressLint("SetJavaScriptEnabled")
 class WebViewWrapper(private val webView: WebView) {
-    @ForInvestigationOnly
-    private var logger: Logger? = null
+    private var logger: AppLogger? = null
 
     init {
         webView.apply {
@@ -37,7 +40,7 @@ class WebViewWrapper(private val webView: WebView) {
                 ): WebResourceResponse? {
                     return try {
                         if (request != null && shouldAddToken(request)) {
-                            val token = AccessTokenManager.acquire(AuthScopes.PROXY.scopes)
+                            val token = AuthService.acquireToken(AuthScopes.PROXY.scopes)
 
                             return if (token == null) {
                                 super.shouldInterceptRequest(view, request)
@@ -123,8 +126,7 @@ class WebViewWrapper(private val webView: WebView) {
         webView.loadUrl(BuildConfig.PROXY_URL)
     }
 
-    @ForInvestigationOnly
-    fun setLogger(logger: Logger) {
+    fun setLogger(logger: AppLogger) {
         this.logger = logger
     }
 }

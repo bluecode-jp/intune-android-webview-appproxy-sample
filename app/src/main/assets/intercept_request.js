@@ -1,5 +1,5 @@
 (function () {
-  if (window.interceptRequest) {
+  if (window.AndroidInterceptRequest) {
     return;
   }
 
@@ -67,7 +67,7 @@
     return originalSend.call(this, data);
   };
 
-  window.interceptRequest = {
+  window.AndroidInterceptRequest = {
     isProxyOrigin,
     getProxyToken,
     tokenAddedHeaderKey,
