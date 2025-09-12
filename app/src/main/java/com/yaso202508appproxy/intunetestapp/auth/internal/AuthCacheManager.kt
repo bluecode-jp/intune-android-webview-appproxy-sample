@@ -12,14 +12,14 @@ typealias AuthCacheKey = Set<String>
 object AuthCacheManager {
     private var logger: AppLogger? = null
 
-    const val EXPIRES_MINUTES = 2
+    const val EXPIRED_MINUTES = 2
     const val SHOULD_REFRESH_MINUTES = 5
     const val FETCH_TIMEOUT_MILLIS = 3000L
 
     /**
      * 有効期限切れか判定
      */
-    fun IAuthenticationResult.expired() = System.currentTimeMillis() >= (this.expiresOn.time - EXPIRES_MINUTES * 60 * 1000)
+    fun IAuthenticationResult.expired() = System.currentTimeMillis() >= (this.expiresOn.time - EXPIRED_MINUTES * 60 * 1000)
 
     /**
      * 有効期限間近か判定
