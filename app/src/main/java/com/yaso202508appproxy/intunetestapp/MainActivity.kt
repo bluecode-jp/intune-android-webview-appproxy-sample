@@ -57,6 +57,15 @@ class MainActivity : AppCompatActivity() {
         initViews()
     }
 
+    /**
+     * アプリケーション終了時にリソース解放
+     */
+    override fun onDestroy() {
+        AuthService.close()
+
+        super.onDestroy()
+    }
+
     private fun initViews() {
         webViewWrapper = WebViewWrapper(findViewById(R.id.webView))
         webViewWrapper.setLogger(createLogger("Web"))

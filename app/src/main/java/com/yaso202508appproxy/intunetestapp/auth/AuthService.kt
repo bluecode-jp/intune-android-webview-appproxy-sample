@@ -86,7 +86,9 @@ object AuthService {
             return false
         }
 
+        AuthCacheManager.refresh()
         IntuneAppProtection.unregisterMam(account)
+
         return true
     }
 
@@ -102,5 +104,13 @@ object AuthService {
         MsAuthenticator.setLogger(logger)
         AuthCacheManager.setLogger(logger)
         IntuneAppProtection.setLogger(logger)
+    }
+
+    /**
+     * 終了してリソースを解放
+     * - アプリケーション終了時に必ず呼び出すこと
+     */
+    fun close() {
+        AuthCacheManager.close()
     }
 }
