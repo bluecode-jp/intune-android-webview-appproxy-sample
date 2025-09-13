@@ -53,12 +53,12 @@
     user,
     password
   ) {
-    this._logInfo = { method, url };
+    this._requestInfo = { method, url };
     return originalOpen.call(this, method, url, async, user, password);
   };
 
   XMLHttpRequest.prototype.send = function (data) {
-    const token = getProxyToken(this._logInfo.url);
+    const token = getProxyToken(this._requestInfo.url);
     if (token) {
       this.setRequestHeader("Authorization", `Bearer ${token}`);
       this.setRequestHeader(tokenAddedHeaderKey, "true");
