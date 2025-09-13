@@ -1,8 +1,14 @@
 (function () {
+  /**
+   * 二重実行を防止
+   */
   if (window.AndroidInterceptRequest) {
     return;
   }
 
+  /**
+   * AppProxyのURLか判定
+   */
   const isProxyOrigin = function (url) {
     try {
       const urlObj = new URL(url, window.location.href);
@@ -14,6 +20,10 @@
     }
   };
 
+  /**
+   * AppProxyのアクセストークンを取得
+   * - AppProxy以外のURLへ送信する場合は取得しない
+   */
   const getProxyToken = function (url) {
     if (!isProxyOrigin(url)) {
       return null;
@@ -26,7 +36,15 @@
     return Android.acquireToken([Android.getProxyScope()]);
   };
 
+  /**
+   * 書き換え済みマークのヘッダー
+   * - AndroidのshouldInterceptRequestとの重複実行を回避
+   */
   const tokenAddedHeaderKey = "X-Token-Added";
+
+  /*
+   * fetch関数を改造
+   */
 
   const originalFetch = window.fetch;
   window.fetch = async function (url, options) {
@@ -42,6 +60,10 @@
 
     return originalFetch(url, newOptions);
   };
+
+  /*
+   * XMLHttpRequest.send関数を改造
+   */
 
   const originalOpen = XMLHttpRequest.prototype.open;
   const originalSend = XMLHttpRequest.prototype.send;
@@ -67,6 +89,9 @@
     return originalSend.call(this, data);
   };
 
+  /**
+   * 実行済みマーク
+   */
   window.AndroidInterceptRequest = {
     isProxyOrigin,
     getProxyToken,

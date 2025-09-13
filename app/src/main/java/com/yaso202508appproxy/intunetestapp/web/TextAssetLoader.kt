@@ -2,7 +2,7 @@ package com.yaso202508appproxy.intunetestapp.web
 
 import android.content.Context
 
-object JavascriptLoader {
+object TextAssetLoader {
     private val cache = mutableMapOf<String, String>()
 
     fun loadContent(context: Context, assetPath: String): String? {

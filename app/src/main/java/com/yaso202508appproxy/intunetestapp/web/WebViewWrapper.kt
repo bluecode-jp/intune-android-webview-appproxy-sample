@@ -23,17 +23,28 @@ class WebViewWrapper(private val webView: WebView) {
             }
 
             webViewClient = object: WebViewClient() {
+                /**
+                 * ページ読み込み完了時に、intercept_request.jsを実行する。
+                 * - JavaScriptが発信したHTTPリクエストを書き換える処理が実装される。
+                 * - AppProxy以外のページでは実行しない。
+                 */
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
 
                     if (view != null && url != null && isProxyOrigin(url)) {
-                        val script = JavascriptLoader.loadContent(view.context, "intercept_request.js")
+                        val script = TextAssetLoader.loadContent(view.context, "intercept_request.js")
                         if (script != null) {
                             view.evaluateJavascript(script, null)
                         }
                     }
                 }
 
+                /**
+                 * HTTPリクエストを捕捉して書き換える
+                 * - Authorizationヘッダーにアクセストークンを付与
+                 * - 書き換え対象を判別し、対象外のリクエストは書き換えずそのまま実行する。
+                 * - 書き換え対象であっても、アクセストークンを取得できなかった場合はそのまま実行する。
+                 */
                 override fun shouldInterceptRequest(
                     view: WebView?,
                     request: WebResourceRequest?
@@ -58,11 +69,23 @@ class WebViewWrapper(private val webView: WebView) {
             }
         }
 
+        /**
+         * 指定したAndroidアプリケーションの関数をJavascriptで実行可能にする
+         */
         webView.addJavascriptInterface(JavascriptInterface, "Android")
     }
 
+    /**
+     * AppProxy内のURLかを判定
+     */
     private fun isProxyOrigin(url: String): Boolean = url.startsWith(BuildConfig.PROXY_ORIGIN, true)
 
+    /**
+     * shouldInterceptRequestで書き換え対象にするか判定
+     * - GET, HEAD メソッドのみ（元リクエストのボディの取得がAndroidでは不可能なため）
+     * - AppProxy内のみ
+     * - Javascriptで書き換え済みの場合は対象外
+     */
     private fun shouldAddToken(request: WebResourceRequest): Boolean {
         if (!isProxyOrigin(request.url.toString())) {
             return false
@@ -77,6 +100,9 @@ class WebViewWrapper(private val webView: WebView) {
         return request.method in listOf("GET", "HEAD")
     }
 
+    /**
+     * Authorizationヘッダーにアクセストークンを付与して書き換えたHTTPリクエストを送信する
+     */
     private fun sendRequestWithToken(originalRequest: WebResourceRequest, token: String): WebResourceResponse {
         val connection = URL(originalRequest.url.toString()).openConnection() as HttpURLConnection
 
@@ -122,6 +148,9 @@ class WebViewWrapper(private val webView: WebView) {
         )
     }
 
+    /**
+     * AppProxyのWebサイトを開く
+     */
     fun load() {
         webView.loadUrl(BuildConfig.PROXY_URL)
     }
