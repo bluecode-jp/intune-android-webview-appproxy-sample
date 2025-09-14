@@ -17,7 +17,6 @@ import com.microsoft.identity.client.exception.MsalException
 import com.yaso202508appproxy.intunetestapp.AppLogger
 import com.yaso202508appproxy.intunetestapp.R
 import com.yaso202508appproxy.intunetestapp.toLog
-import com.yaso202508appproxy.intunetestapp.truncate
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
@@ -97,7 +96,8 @@ object MsAuthenticator {
 
     /**
      * サイレント認証
-     * - 成功した場合は認証情報を戻す
+     * - サインインおよびアクセストークン取得に利用
+     * - 認証情報を戻す
      */
     suspend fun silentAuth(scopes: List<String>): IAuthenticationResult? {
         val app = msalApp

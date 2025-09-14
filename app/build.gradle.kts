@@ -7,12 +7,22 @@ plugins {
     id("com.microsoft.intune.mam")
 }
 
+/**
+ * local.propertiesファイルを読み込む
+ */
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
 
+/**
+ * ローカル設定値を取得（優先順位は下記）
+ * - 環境変数
+ * - local.propertiesファイル
+ * - Gradleプロジェクトプロパティ
+ * - defaultValue
+ */
 fun getConfigValue(key: String, defaultValue: String = ""): String {
     System.getenv(key.uppercase().replace(".", "_"))?.let { return it }
     localProperties.getProperty(key)?.let { return it }
@@ -22,12 +32,14 @@ fun getConfigValue(key: String, defaultValue: String = ""): String {
 
 android {
     project.afterEvaluate {
+        /**
+         * ビルド時にmsal_config.jsonを生成
+         */
         val generateMsalConfig by tasks.registering {
             doLast {
                 val templateFile = File("$projectDir/src/main/res/raw/msal_config_template.json")
                 val outputFile = File("$projectDir/src/main/res/raw/msal_config.json")
 
-                // 必要な設定値の存在チェック
                 val clientId = getConfigValue("msal.client.id")
                 val redirectUri = getConfigValue("msal.redirect.uri")
                 val tenantId = getConfigValue("msal.tenant.id")
@@ -51,6 +63,9 @@ android {
         }
     }
 
+    /**
+     * デバッグビルド時のAPK署名に使うキーストア情報
+     */
     signingConfigs {
         getByName("debug") {
             storeFile = file(getConfigValue("debug.store.file"))
@@ -70,12 +85,22 @@ android {
         versionName = "0.0.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        /**
+         * デバッグビルド時のAPK署名に使うキーストアを指定
+         */
         signingConfig = signingConfigs.getByName("debug")
 
+        /**
+         * ローカル設定値をセット
+         */
         buildConfigField("String", "PROXY_URL", "\"${getConfigValue("proxy.url")}\"")
         buildConfigField("String", "PROXY_ORIGIN", "\"${getConfigValue("proxy.origin")}\"")
         buildConfigField("String", "PROXY_SCOPE", "\"${getConfigValue("proxy.scope")}\"")
 
+        /**
+         * AndroidManifest.xmlにローカル設定値をセット
+         */
         manifestPlaceholders["msAuthHost"] = getConfigValue("application.id", "com.yaso202508appproxy.intunetestapp")
         manifestPlaceholders["msAuthPath"] = getConfigValue("msal.redirect.path")
     }
@@ -113,7 +138,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -126,5 +150,4 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-
 }
