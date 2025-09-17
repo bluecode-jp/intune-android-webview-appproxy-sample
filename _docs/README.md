@@ -9,6 +9,9 @@
 ## 実装手順
 
 - [MSAL導入](./msal.md)
+- [トークン取得関数]
+- [Intune App SDK導入](./intune-sdk.md)
+- [認証統合サービス]
 
 ## AppProxy認証の流れ
 
