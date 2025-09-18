@@ -11,7 +11,7 @@
 - [MSAL導入](./msal.md)
 - [アクセストークン取得機能の実装](./acquire-token.md)
 - [Intune App SDK導入](./intune-sdk.md)
-- [認証統合サービス]
+- [統合認証サービスの実装](./auth-service.md)
 
 ## AppProxy認証の流れ
 
