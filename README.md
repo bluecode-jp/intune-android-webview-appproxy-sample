@@ -44,7 +44,7 @@ Webサイトが発行するすべてのHTTPリクエストに対応する必要�
 
 | リクエスト種類 | WebView API | JavaScript API | 備考 |
 |---------------|-------------|----------------|------|
-| ページ遷移 | ✅ ShouldInterceptRequest | ❌ 対応不可 | |
+| ページロード時 | ✅ ShouldInterceptRequest | ❌ 対応不可 | |
 | フォーム送信 | ❌ 対応不可 | ✅ submitイベント捕捉 | 特殊ケースへの個別対応が必要 |
 | 非同期通信（Ajax） | ❌ ボディ付きは対応不可 | ✅ XMLHttpRequest/Fetch API改造 | |
 
