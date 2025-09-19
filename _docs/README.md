@@ -14,9 +14,3 @@
 - [統合認証サービスの実装](./auth-service.md)
 - [WebViewリクエスト捕捉機能の実装](./webview-intercept-request.md)
 - [操作フローの実装](./operation-flow.md)
-
-## AppProxy認証の流れ
-
-（本アプリを使いながら説明）
-
-トークン付与せずページ遷移したらMSサインインページにリダイレクトされる
