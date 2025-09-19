@@ -66,23 +66,33 @@ Git Cloneしたのち、Android Studioでプロジェクトを開きます。
 
 プロジェクトルートの `local.properties` ファイルに以下のローカル設定値を追加します：
 
-> ローカル設定値の詳細は[こちら](./_docs/)をご参照ください。
-
 ```properties:local.properties
+# Androidアプリのパッケージ名（アプリストアでの識別子）
 application.id=com.example.intunetestapp
 
+# EntraIDアプリケーションのテナントID
 msal.tenant.id=12345678-1234-1234-1234-123456789abc
+# EntraIDアプリケーションのクライアントID
 msal.client.id=87654321-4321-4321-4321-abcdef123456
+# MSALのリダイレクトURL
 msal.redirect.uri=msauth://com.example.intunetestapp/AbCdEfGhIjKlMnOpQrStUvWxYz0%3D
+# MSALのリダイレクトパス
 msal.redirect.path=/AbCdEfGhIjKlMnOpQrStUvWxYz0=
 
+# App Proxy WebサイトURL
 proxy.url=https://your-appproxy-website.biz
+# App Proxy WebサイトのORIGIN
 proxy.origin=https://your-appproxy-website.biz
+# App Proxy Webサイトのスコープ
 proxy.scope=https://your-appproxy-website.biz/user_impersonation
 
+# デバッグ用キーストアファイルのパス
 debug.store.file=/path/to/your/keystore.jks
+# キーストアのパスワード
 debug.store.password=your-keystore-password
+# キーのエイリアス
 debug.key.alias=your-key-alias
+# キーのパスワード
 debug.key.password=your-key-password
 ```
 
