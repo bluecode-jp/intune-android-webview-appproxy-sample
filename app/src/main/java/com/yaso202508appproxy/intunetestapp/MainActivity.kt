@@ -16,6 +16,7 @@ import com.yaso202508appproxy.intunetestapp.auth.TestAuthService
 import com.yaso202508appproxy.intunetestapp.web.WebViewWrapper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webViewWrapper: WebViewWrapper
@@ -86,12 +87,10 @@ class MainActivity : AppCompatActivity() {
 
         btnSetAccount = findViewById(R.id.btnSetAccount)
         btnSetAccount.setOnClickListener {
-            val activity = this
-
             authScopesSelectDialog.show { scopes ->
                 lifecycleScope.launch {
                     try {
-                        val account = AuthService.setAccount(scopes, activity)
+                        val account = AuthService.setAccount(scopes, this@MainActivity)
                         showMsg("setAccount: ${account?.username}")
                     } catch (exception: Exception) {
                         logger.error("setAccount", exception)
@@ -103,9 +102,11 @@ class MainActivity : AppCompatActivity() {
         btnWaitReady = findViewById(R.id.btnWaitReady)
         btnWaitReady.setOnClickListener {
             authScopesSelectDialog.show { scopes ->
-                lifecycleScope.launch(Dispatchers.IO) {
+                lifecycleScope.launch {
                     try {
-                        AuthService.waitForAppProxyAccessReady(scopes, 5000L, 500L)
+                        withContext(Dispatchers.IO) {
+                            AuthService.waitForAppProxyAccessReady(scopes, 5000L, 500L)
+                        }
                         showMsg("WaitForReady: success")
                     } catch (exception: Exception) {
                         logger.error("WaitForReady", exception)
@@ -116,12 +117,10 @@ class MainActivity : AppCompatActivity() {
 
         btnSignIn = findViewById(R.id.btnSignIn)
         btnSignIn.setOnClickListener {
-            val activity = this
-
             authScopesSelectDialog.show { scopes ->
                 lifecycleScope.launch {
                     try {
-                        val account = TestAuthService.signIn(scopes, activity)
+                        val account = TestAuthService.signIn(scopes, this@MainActivity)
                         showMsg("signIn: ${account?.username}")
                     } catch (exception: Exception) {
                         logger.error("signIn", exception)
@@ -173,9 +172,11 @@ class MainActivity : AppCompatActivity() {
         btnAuth = findViewById(R.id.btnAuth)
         btnAuth.setOnClickListener {
             authScopesSelectDialog.show { scopes ->
-                lifecycleScope.launch(Dispatchers.IO) {
+                lifecycleScope.launch {
                     try {
-                        val authInfo = AuthService.acquireAuth(scopes)
+                        val authInfo = withContext(Dispatchers.IO) {
+                            AuthService.acquireAuth(scopes)
+                        }
                         if (authInfo == null) {
                             showMsg("authInfo: null")
                         } else {
@@ -252,14 +253,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showMsgDialog(title: String, msg: String) {
-        val activity = this
-        lifecycleScope.launch {
-            AlertDialog.Builder(activity)
-                .setTitle(title)
-                .setMessage(msg)
-                .setPositiveButton("OK", null)
-                .show()
-        }
+        AlertDialog.Builder(this@MainActivity)
+            .setTitle(title)
+            .setMessage(msg)
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     private fun showLog() = showMsgDialog("log", logHistory.toString())
