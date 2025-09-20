@@ -1,3 +1,5 @@
 /build
+/debug
+/release
 
 src/main/res/raw/msal_config.json

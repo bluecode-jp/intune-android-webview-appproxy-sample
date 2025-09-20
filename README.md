@@ -69,6 +69,10 @@ Git Cloneしたのち、Android Studioでプロジェクトを開きます。
 ```properties:local.properties
 # Androidアプリのパッケージ名（アプリストアでの識別子）
 application.id=com.example.intunetestapp
+# Androidアプリのバージョンコード
+version.code=9
+# Androidアプリのバージョン名
+version.name=0.0.9
 
 # EntraIDアプリケーションのテナントID
 msal.tenant.id=12345678-1234-1234-1234-123456789abc
