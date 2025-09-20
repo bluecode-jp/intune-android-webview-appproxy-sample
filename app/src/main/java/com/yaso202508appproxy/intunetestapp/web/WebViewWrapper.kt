@@ -20,6 +20,7 @@ class WebViewWrapper(private val webView: WebView) {
         webView.apply {
             settings.apply {
                 javaScriptEnabled = true
+                domStorageEnabled = true
             }
 
             webViewClient = object: WebViewClient() {
