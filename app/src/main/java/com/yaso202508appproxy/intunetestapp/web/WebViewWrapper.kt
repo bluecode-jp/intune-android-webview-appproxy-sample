@@ -138,14 +138,35 @@ class WebViewWrapper(private val webView: WebView) {
             }
         }
 
+        val statusText = connection.responseMessage?.takeIf { it.isNotEmpty() }
+            ?: getDefaultHttpStatusText(connection.responseCode)
+
         return WebResourceResponse(
             mimeType,
             encoding,
             connection.responseCode,
-            connection.responseMessage,
+            statusText,
             responseHeaders,
             connection.inputStream
         )
+    }
+
+    /**
+     * レスポンスステータスコードに対応するデフォルトの文字列を取得
+     * - WebResourceResponseでは必須項目だが、サーバーからのレスポンスで空になる場合があるため対応。
+     */
+    private fun getDefaultHttpStatusText(statusCode: Int): String {
+        return when (statusCode) {
+            200 -> "OK"
+            201 -> "Created"
+            204 -> "No Content"
+            400 -> "Bad Request"
+            401 -> "Unauthorized"
+            403 -> "Forbidden"
+            404 -> "Not Found"
+            500 -> "Internal Server Error"
+            else -> "Unknown"
+        }
     }
 
     /**
