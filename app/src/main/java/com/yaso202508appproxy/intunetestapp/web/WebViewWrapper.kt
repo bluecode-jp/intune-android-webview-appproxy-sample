@@ -107,49 +107,53 @@ class WebViewWrapper(private val webView: WebView) {
     private fun sendRequestWithToken(originalRequest: WebResourceRequest, token: String): WebResourceResponse {
         val connection = URL(originalRequest.url.toString()).openConnection() as HttpURLConnection
 
-        connection.requestMethod = originalRequest.method
-        originalRequest.requestHeaders.forEach { (key, value) ->
-            connection.setRequestProperty(key, value)
-        }
+        try {
+            connection.requestMethod = originalRequest.method
+            originalRequest.requestHeaders.forEach { (key, value) ->
+                connection.setRequestProperty(key, value)
+            }
 
-        connection.setRequestProperty("Authorization", "Bearer $token")
+            connection.setRequestProperty("Authorization", "Bearer $token")
 
-        connection.connect()
+            connection.connect()
 
-        var mimeType = connection.contentType
-        var encoding = connection.contentEncoding
+            var mimeType = connection.contentType
+            var encoding = connection.contentEncoding
 
-        mimeType?.let { type ->
-            if (type.contains(";")) {
-                val parts = type.split(";")
-                mimeType = parts[0].trim()
-                for (i in 1 until parts.size) {
-                    val part = parts[i].trim()
-                    if (part.startsWith("charset=")) {
-                        encoding = part.substring(8)
+            mimeType?.let { type ->
+                if (type.contains(";")) {
+                    val parts = type.split(";")
+                    mimeType = parts[0].trim()
+                    for (i in 1 until parts.size) {
+                        val part = parts[i].trim()
+                        if (part.startsWith("charset=")) {
+                            encoding = part.substring(8)
+                        }
                     }
                 }
             }
-        }
 
-        val responseHeaders = mutableMapOf<String, String>()
-        connection.headerFields.forEach { (key, values) ->
-            if (key != null && values.isNotEmpty()) {
-                responseHeaders[key] = values[0]
+            val responseHeaders = mutableMapOf<String, String>()
+            connection.headerFields.forEach { (key, values) ->
+                if (key != null && values.isNotEmpty()) {
+                    responseHeaders[key] = values[0]
+                }
             }
+
+            val statusText = connection.responseMessage?.takeIf { it.isNotEmpty() }
+                ?: getDefaultHttpStatusText(connection.responseCode)
+
+            return WebResourceResponse(
+                mimeType,
+                encoding,
+                connection.responseCode,
+                statusText,
+                responseHeaders,
+                connection.inputStream
+            )
+        } finally {
+            connection.disconnect()
         }
-
-        val statusText = connection.responseMessage?.takeIf { it.isNotEmpty() }
-            ?: getDefaultHttpStatusText(connection.responseCode)
-
-        return WebResourceResponse(
-            mimeType,
-            encoding,
-            connection.responseCode,
-            statusText,
-            responseHeaders,
-            connection.inputStream
-        )
     }
 
     /**
