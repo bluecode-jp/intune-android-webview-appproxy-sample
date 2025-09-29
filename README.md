@@ -1,5 +1,5 @@
 <!-- omit in toc -->
-# Intune Test App
+# Intune Android WebView AppProxy Sample
 
 - [概要](#概要)
 - [認証フローの概要](#認証フローの概要)
