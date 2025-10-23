@@ -1,6 +1,7 @@
 package com.yaso202508appproxy.intunetestapp.auth
 
 import android.app.Activity
+import com.microsoft.identity.client.IAccount
 import com.yaso202508appproxy.intunetestapp.auth.internal.IntuneAppProtection
 import com.yaso202508appproxy.intunetestapp.auth.internal.MsAuthenticator
 
@@ -17,7 +18,15 @@ object TestAuthService {
     suspend fun signIn(
         signInScopes: List<String>,
         activity: Activity
-    ) = MsAuthenticator.signIn(signInScopes, activity)?.account
+    ): IAccount? {
+        val authResult = MsAuthenticator.signIn(signInScopes, activity)
+        return if (authResult is AuthResult.Success) {
+            authResult.info.account
+        } else {
+            null
+        }
+    }
+
 
     /**
      * MAM登録のみを行う

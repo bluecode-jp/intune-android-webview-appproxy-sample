@@ -54,8 +54,8 @@
 
 ### App Proxy準備機能
 
-**`waitForAppProxyAccessReady(appProxyScopes, timeOutMillis, intervalMillis)`**
-- App Proxyへのアクセスが可能になるまで待機する専用機能
+**`checkPermission(appProxyScopes, timeOutMillis, intervalMillis)`**
+- App Proxyへのアクセス権限を確認する機能
 - MAM登録の完了とApp Proxyトークンの取得完了を確認
 - `appProxyScopes`にはApp Proxyスコープを指定
 - タイムアウト設定により無限待機を防止

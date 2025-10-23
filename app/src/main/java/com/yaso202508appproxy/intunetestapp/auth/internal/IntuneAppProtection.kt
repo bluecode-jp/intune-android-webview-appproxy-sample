@@ -5,6 +5,7 @@ import com.microsoft.intune.mam.client.app.MAMComponents
 import com.microsoft.intune.mam.policy.MAMEnrollmentManager
 import com.microsoft.intune.mam.policy.MAMServiceAuthenticationCallback
 import com.yaso202508appproxy.intunetestapp.AppLogger
+import com.yaso202508appproxy.intunetestapp.auth.AuthResult
 
 object IntuneAppProtection {
     private var mamEnrollmentManager: MAMEnrollmentManager? = null
@@ -23,9 +24,12 @@ object IntuneAppProtection {
         manager.registerAuthenticationCallback(object : MAMServiceAuthenticationCallback {
             override fun acquireToken(upn: String, aadId: String, resourceId: String): String? {
                 logger?.info("MAM.acquireToken: upn = $upn, aadId = $aadId, resourceId = $resourceId")
-                val authInfo = AuthCacheManager.acquireAuth(listOf("$resourceId/.default"))
-                val accessToken = authInfo?.accessToken
-                return accessToken
+                val authResult = AuthCacheManager.acquireAuth(listOf("$resourceId/.default"))
+                return if (authResult is AuthResult.Success) {
+                    authResult.info.accessToken
+                } else {
+                    null
+                }
             }
         })
 

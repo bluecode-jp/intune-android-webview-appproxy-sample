@@ -9,7 +9,6 @@
   - [期限管理による効率的な更新](#期限管理による効率的な更新)
   - [同期関数としての高速レスポンス](#同期関数としての高速レスポンス)
   - [重複実行の防止](#重複実行の防止)
-  - [タイムアウト制御](#タイムアウト制御)
   - [リソース管理とライフサイクル対応](#リソース管理とライフサイクル対応)
 - [パフォーマンスの特徴](#パフォーマンスの特徴)
 
@@ -38,7 +37,7 @@
 
 - **実装ファイル**: `auth/internal/AuthCacheManager.kt`
 - **メイン関数**: `acquireAuth()`
-- **戻り値**: `IAuthenticationResult`（この中にアクセストークンが含まれます）
+- **戻り値**: `AuthResult`（この中にアクセストークンが含まれます）
 
 ## 実装のポイント
 
@@ -71,7 +70,7 @@ fun IAuthenticationResult.shouldRefresh() = System.currentTimeMillis() >= (this.
 
 ```kotlin
 @WorkerThread
-fun acquireAuth(scopes: List<String>): IAuthenticationResult? {
+fun acquireAuth(scopes: List<String>): AuthResult {
     val key = scopesToKey(scopes)
     val cache = cacheMap[key]
 
@@ -80,13 +79,13 @@ fun acquireAuth(scopes: List<String>): IAuthenticationResult? {
         // 事前更新対象の場合
         if (cache.shouldRefresh()) {
             // バックグラウンドで更新（呼び出し元は待機しない）
-            backgroundScope.launch {
+            ensureBackgroundScope().launch {
                 fetchCache(scopes)
             }
         }
 
         // 有効なキャッシュを即座に戻す（高速）
-        return cache
+        return AuthResult.Success(cache)
     }
 
     // 有効なキャッシュがない場合のみ同期的に取得（低速）
@@ -105,7 +104,7 @@ fun acquireAuth(scopes: List<String>): IAuthenticationResult? {
 ```kotlin
 private val mutexMap = ConcurrentHashMap<AuthCacheKey, Mutex>()
 
-private suspend fun fetchCache(scopes: List<String>): IAuthenticationResult? {
+private suspend fun fetchCache(scopes: List<String>): AuthResult {
     val key = scopesToKey(scopes)
     val mutex = mutexMap.computeIfAbsent(key) { Mutex() }
     
@@ -119,37 +118,9 @@ private suspend fun fetchCache(scopes: List<String>): IAuthenticationResult? {
 - 同じスコープに対する重複する認証リクエストを防止
 - ネットワークリソースの無駄遣いを回避
 
-### タイムアウト制御
-
-```kotlin
-const val FETCH_TIMEOUT_MILLIS = 3000L
-
-val result = withTimeout(FETCH_TIMEOUT_MILLIS) {
-    MsAuthenticator.silentAuth(scopes)
-}
-```
-
-- 認証情報取得処理にタイムアウトを設定
-- ネットワーク遅延によるアプリケーションの停止を防止
-
 ### リソース管理とライフサイクル対応
 
-```kotlin
-fun refresh() {
-    close()
-    backgroundScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-}
-
-fun close() {
-    backgroundScope.cancel()
-    cacheMap.clear()
-    mutexMap.clear()
-}
-```
-
-- **refresh()**: アカウント切り替え時にキャッシュを完全クリア
-- **close()**: アプリ終了時のリソース解放
-- メモリリークの防止
+clear()でリソースを解放し、メモリリークを防止します
 
 ## パフォーマンスの特徴
 

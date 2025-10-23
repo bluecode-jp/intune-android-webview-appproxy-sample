@@ -270,6 +270,9 @@ Microsoftアカウント認証機能を実装します。
 - `ISingleAccountPublicClientApplication`を使用してシングルアカウントモードで実装しています
 - 一度に一つのアカウントのみをサポートし、アカウント管理をシンプルにしています
 
+**戻り値のカスタマイズ**
+- `AuthResult`クラスを作成し、認証エラーの種類を判別可能にしています
+
 ### 主な機能
 
 **`initialize(context: Context)`**

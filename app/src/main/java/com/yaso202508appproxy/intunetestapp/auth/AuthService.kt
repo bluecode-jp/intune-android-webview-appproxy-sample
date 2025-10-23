@@ -4,12 +4,12 @@ import android.app.Activity
 import android.content.Context
 import androidx.annotation.WorkerThread
 import com.microsoft.identity.client.IAccount
-import com.microsoft.identity.client.IAuthenticationResult
 import com.microsoft.intune.mam.policy.MAMEnrollmentManager
 import com.yaso202508appproxy.intunetestapp.AppLogger
 import com.yaso202508appproxy.intunetestapp.auth.internal.AuthCacheManager
 import com.yaso202508appproxy.intunetestapp.auth.internal.IntuneAppProtection
 import com.yaso202508appproxy.intunetestapp.auth.internal.MsAuthenticator
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 
@@ -44,35 +44,48 @@ object AuthService {
         signInScopes: List<String>,
         activity: Activity
     ): IAccount? {
-        val authInfo = MsAuthenticator.signIn(signInScopes, activity)
-        if (authInfo == null) {
+        val authResult = MsAuthenticator.signIn(signInScopes, activity)
+        if (authResult !is AuthResult.Success) {
             return null
         }
 
-        val result = IntuneAppProtection.registerMam()
-        if (!result) {
+        val mamResult = IntuneAppProtection.registerMam()
+        if (!mamResult) {
             return null
         }
 
-        return authInfo.account
+        return authResult.info.account
     }
 
     /**
-     * AppProxyにアクセス可能になるまで待機
+     * AppProxyアクセス権限確認
      */
     @WorkerThread
-    suspend fun waitForAppProxyAccessReady(
+    suspend fun checkPermission(
         appProxyScopes: List<String>,
         timeOutMillis: Long,
         intervalMillis: Long
-    ) {
-        withTimeout(timeOutMillis) {
-            while (IntuneAppProtection.getMamStatus() != MAMEnrollmentManager.Result.ENROLLMENT_SUCCEEDED) {
-                delay(intervalMillis)
-            }
+    ): CheckPermissionResult {
 
-            while (AuthCacheManager.acquireAuth(appProxyScopes) == null) {
-                delay(intervalMillis)
+        try {
+            withTimeout(timeOutMillis) {
+                while (IntuneAppProtection.getMamStatus() != MAMEnrollmentManager.Result.ENROLLMENT_SUCCEEDED) {
+                    delay(intervalMillis)
+                }
+            }
+        } catch (exception: TimeoutCancellationException) {
+            return CheckPermissionResult.Failure.Timeout
+        }
+
+        return when (val authResult = AuthCacheManager.acquireAuth(appProxyScopes)) {
+            is AuthResult.Failure.UiRequired -> {
+                CheckPermissionResult.Failure.MfaRequired(authResult.exception)
+            }
+            is AuthResult.Failure -> {
+                CheckPermissionResult.Failure.AuthFailed(authResult)
+            }
+            else -> {
+                CheckPermissionResult.Success
             }
         }
     }
@@ -86,7 +99,7 @@ object AuthService {
             return false
         }
 
-        AuthCacheManager.refresh()
+        AuthCacheManager.clear()
         IntuneAppProtection.unregisterMam(account)
 
         return true
@@ -95,10 +108,17 @@ object AuthService {
     suspend fun getAccount(): IAccount? = MsAuthenticator.getAccount()
 
     @WorkerThread
-    fun acquireAuth(scopes: List<String>): IAuthenticationResult? = AuthCacheManager.acquireAuth(scopes)
+    fun acquireAuth(scopes: List<String>): AuthResult = AuthCacheManager.acquireAuth(scopes)
 
     @WorkerThread
-    fun acquireToken(scopes: List<String>): String? = acquireAuth(scopes)?.accessToken
+    fun acquireToken(scopes: List<String>): String? {
+        val authResult = acquireAuth(scopes)
+        return if (authResult is AuthResult.Success) {
+            authResult.info.accessToken
+        } else {
+            null
+        }
+    }
 
     fun setLogger(logger: AppLogger) {
         MsAuthenticator.setLogger(logger)
@@ -111,6 +131,6 @@ object AuthService {
      * - アプリケーション終了時に必ず呼び出すこと
      */
     fun close() {
-        AuthCacheManager.close()
+        AuthCacheManager.clear()
     }
 }

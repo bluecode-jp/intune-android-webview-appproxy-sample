@@ -11,7 +11,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import com.yaso202508appproxy.intunetestapp.auth.AuthResult
 import com.yaso202508appproxy.intunetestapp.auth.AuthService
+import com.yaso202508appproxy.intunetestapp.auth.CheckPermissionResult
 import com.yaso202508appproxy.intunetestapp.auth.TestAuthService
 import com.yaso202508appproxy.intunetestapp.web.WebViewWrapper
 import kotlinx.coroutines.Dispatchers
@@ -104,10 +106,24 @@ class MainActivity : AppCompatActivity() {
             authScopesSelectDialog.show { scopes ->
                 lifecycleScope.launch {
                     try {
-                        withContext(Dispatchers.IO) {
-                            AuthService.waitForAppProxyAccessReady(scopes, 5000L, 500L)
+                        val checkResult = withContext(Dispatchers.IO) {
+                            AuthService.checkPermission(scopes, 5000L, 500L)
                         }
-                        showMsg("WaitForReady: success")
+
+                        when (checkResult) {
+                            is CheckPermissionResult.Success -> {
+                                showMsg("WaitForReady: success")
+                            }
+                            is CheckPermissionResult.Failure.Timeout -> {
+                                showMsg("WaitForReady: timeout")
+                            }
+                            is CheckPermissionResult.Failure.MfaRequired -> {
+                                showMsg("WaitForReady: MFA required")
+                            }
+                            else -> {
+                                showMsg("WaitForReady: auth failed")
+                            }
+                        }
                     } catch (exception: Exception) {
                         logger.error("WaitForReady", exception)
                     }
@@ -174,13 +190,13 @@ class MainActivity : AppCompatActivity() {
             authScopesSelectDialog.show { scopes ->
                 lifecycleScope.launch {
                     try {
-                        val authInfo = withContext(Dispatchers.IO) {
+                        val authResult = withContext(Dispatchers.IO) {
                             AuthService.acquireAuth(scopes)
                         }
-                        if (authInfo == null) {
+                        if (authResult !is AuthResult.Success) {
                             showMsg("authInfo: null")
                         } else {
-                            showMsgDialog("authInfo", authInfo.toLog())
+                            showMsgDialog("authInfo", authResult.info.toLog())
                         }
                     } catch (exception: Exception) {
                         logger.error("btnAuth", exception)

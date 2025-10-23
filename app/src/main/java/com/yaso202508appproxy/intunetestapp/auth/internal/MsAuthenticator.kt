@@ -14,8 +14,10 @@ import com.microsoft.identity.client.PublicClientApplication
 import com.microsoft.identity.client.SignInParameters
 import com.microsoft.identity.client.SilentAuthenticationCallback
 import com.microsoft.identity.client.exception.MsalException
+import com.microsoft.identity.client.exception.MsalUiRequiredException
 import com.yaso202508appproxy.intunetestapp.AppLogger
 import com.yaso202508appproxy.intunetestapp.R
+import com.yaso202508appproxy.intunetestapp.auth.AuthResult
 import com.yaso202508appproxy.intunetestapp.toLog
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -97,19 +99,18 @@ object MsAuthenticator {
     /**
      * サイレント認証
      * - サインインおよびアクセストークン取得に利用
-     * - 認証情報を戻す
      */
-    suspend fun silentAuth(scopes: List<String>): IAuthenticationResult? {
+    suspend fun silentAuth(scopes: List<String>): AuthResult {
         val app = msalApp
         if (app == null) {
             logger?.error("silentAuth: msal app is null")
-            return null
+            return AuthResult.Failure.NotInitialized
         }
 
         val account = getAccount()
         if (account == null) {
-            logger?.error("silentAuth: account is null")
-            return null
+            logger?.error(  "silentAuth: account is null")
+            return AuthResult.Failure.NoAccount
         }
 
         return suspendCancellableCoroutine { continuation ->
@@ -122,15 +123,21 @@ object MsAuthenticator {
                         override fun onSuccess(authenticationResult: IAuthenticationResult?) {
                             if (authenticationResult != null) {
                                 logger?.info("silentAuth: success${System.lineSeparator()}${authenticationResult.toLog()}")
+                                continuation.resume(AuthResult.Success(authenticationResult))
                             } else {
                                 logger?.error("silentAuth: result is null")
+                                continuation.resume(AuthResult.Failure.NoResult)
                             }
-                            continuation.resume(authenticationResult)
                         }
 
                         override fun onError(exception: MsalException?) {
                             logger?.error("silentAuth", exception)
-                            continuation.resume(null)
+
+                            if (exception is MsalUiRequiredException) {
+                                continuation.resume(AuthResult.Failure.UiRequired(exception))
+                            } else {
+                                continuation.resume(AuthResult.Failure.Unknown(exception))
+                            }
                         }
                     })
                     .build()
@@ -140,13 +147,12 @@ object MsAuthenticator {
 
     /**
      * 画面操作でサインイン
-     * - 認証情報を返す
      */
-    suspend fun interactiveSignIn(scopes: List<String>, activity: Activity): IAuthenticationResult? {
+    suspend fun interactiveSignIn(scopes: List<String>, activity: Activity): AuthResult {
         val app = msalApp
         if (app == null) {
             logger?.error("signIn: msal app is null")
-            return null
+            return AuthResult.Failure.NotInitialized
         }
 
         return suspendCancellableCoroutine { continuation ->
@@ -158,20 +164,21 @@ object MsAuthenticator {
                         override fun onSuccess(authenticationResult: IAuthenticationResult?) {
                             if (authenticationResult != null) {
                                 logger?.info("interactiveSignIn: success${System.lineSeparator()}${authenticationResult.toLog()}")
+                                continuation.resume(AuthResult.Success(authenticationResult))
                             } else {
                                 logger?.error("interactiveSignIn: result is null")
+                                continuation.resume(AuthResult.Failure.NoResult)
                             }
-                            continuation.resume(authenticationResult)
                         }
 
                         override fun onError(exception: MsalException?) {
                             logger?.error("interactiveSignIn", exception)
-                            continuation.resume(null)
+                            continuation.resume(AuthResult.Failure.Unknown(exception))
                         }
 
                         override fun onCancel() {
                             logger?.error("interactiveSignIn: onCancel")
-                            continuation.resume(null)
+                            continuation.resume(AuthResult.Failure.Canceled)
                         }
 
                     })
@@ -182,10 +189,14 @@ object MsAuthenticator {
 
     /**
      * サインイン
-     * - 認証情報を戻す
      */
-    suspend fun signIn(scopes: List<String>, activity: Activity): IAuthenticationResult? {
-        return silentAuth(scopes) ?: interactiveSignIn(scopes, activity)
+    suspend fun signIn(scopes: List<String>, activity: Activity): AuthResult {
+        val silentResult = silentAuth(scopes)
+        if (silentResult is AuthResult.Success) {
+            return silentResult
+        }
+
+        return interactiveSignIn(scopes, activity)
     }
 
     /**
