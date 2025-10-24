@@ -7,9 +7,7 @@
     - [認証機能の初期化](#認証機能の初期化)
     - [アカウントセットアップ](#アカウントセットアップ)
     - [WebViewでWebサイトを開く](#webviewでwebサイトを開く)
-  - [操作フローの実装パターン](#操作フローの実装パターン)
-    - [パターン1: 起動時にWebサイトまで自動で開く場合](#パターン1-起動時にwebサイトまで自動で開く場合)
-    - [パターン2: アカウント設定とWebサイト表示をそれぞれボタンで操作する場合](#パターン2-アカウント設定とwebサイト表示をそれぞれボタンで操作する場合)
+  - [サンプル](#サンプル)
   - [注意事項](#注意事項)
 
 ## 概要
@@ -79,91 +77,13 @@ try {
 }
 ```
 
-## 操作フローの実装パターン
+## サンプル
 
-### パターン1: 起動時にWebサイトまで自動で開く場合
+***パターン1: 起動時にWebサイトまで自動で開く場合***
 
-```kotlin
-// MainActivity.kt
-class MainActivity : AppCompatActivity() {
-    private lateinit var webViewWrapper: WebViewWrapper
-    
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+`ui1auto/AutoLaunchActivity.kt` をご覧ください。
 
-        // WebView初期化
-        setupWebView()
-        
-        lifecycleScope.launch {
-            try {
-                // 認証機能初期化
-                if (!initializeAuth()) return@launch
-                
-                // アカウントセットアップ
-                val account = setupAccount()
-                if (account == null) {
-                    return@launch
-                }
-                
-                // Webサイトを開く
-                openWebsite()
-                
-            } catch (e: Exception) {
-                Log.e("MainActivity", "アプリ初期化エラー", e)
-                showErrorDialog("アプリの初期化に失敗しました")
-            }
-        }
-    }
-    
-    private fun setupWebView() {
-        webViewWrapper = WebViewWrapper(findViewById(R.id.webView))
-    }
-
-    private suspend fun initializeAuth(): Boolean {
-        val success = AuthService.initialize(applicationContext)
-        if (!success) {
-            showErrorDialog("認証機能の初期化に失敗しました")
-        }
-        return success
-    }
-    
-    private suspend fun setupAccount(): IAccount? {
-        val scopes = listOf("User.Read")
-        val account = AuthService.setAccount(scopes, this@MainActivity)
-        if (account == null) {
-            showErrorDialog("サインインに失敗しました")
-        }
-        return account
-    }
-    
-    private suspend fun openWebsite() {
-        try {
-            withContext(Dispatchers.IO) {
-                AuthService.waitForAppProxyAccessReady(listOf("https://my-website.biz/user_impersonation"), 5000L, 500L)
-            }
-            webViewWrapper.load()
-        } catch (e: TimeoutCancellationException) {
-            showErrorDialog("App Proxyへの接続準備がタイムアウトしました")
-        }
-    }
-    
-    private fun showErrorDialog(message: String) {
-        AlertDialog.Builder(this)
-            .setTitle("エラー")
-            .setMessage(message)
-            .setPositiveButton("OK") { _, _ -> finish() }
-            .show()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        AuthService.close()
-    }
-}
-```
-
-### パターン2: アカウント設定とWebサイト表示をそれぞれボタンで操作する場合
+***パターン2: アカウント設定とWebサイト表示をそれぞれボタンで操作する場合***
 
 ```kotlin
 // MainActivity.kt
@@ -283,7 +203,7 @@ class MainActivity : AppCompatActivity() {
 ## 注意事項
 
 **リソース管理**
-- `onDestroy()`で`AuthService.close()`を必ず呼び出してリソースを解放してください
+- アプリケーション終了時に`AuthService.close()`を呼び出してリソースを解放してください
 
 **エラーハンドリング**
 - 各段階でのエラーを適切にキャッチし、ユーザーに分かりやすいメッセージを表示してください
@@ -291,4 +211,4 @@ class MainActivity : AppCompatActivity() {
 
 **スコープの設定**
 - `setupAccount()`のスコープは認証前でもアクセス可能なものを指定してください
-- App Proxyスコープは`waitForAppProxyAccessReady()`で使用してください
+- App Proxyスコープは`checkPermission()`で使用してください
