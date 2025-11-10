@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".ui0test.TestActivity">
+
+    <!-- ネイティブ画面部分 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#80D8FF"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ms authenticator" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:id="@+id/buttonMsalInit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="init" />
+
+            <Button
+                android:id="@+id/buttonMsalSignIn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="sign in" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:id="@+id/buttonMsalSilentAuth"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="silent auth" />
+
+            <Button
+                android:id="@+id/buttonMsalInteractiveToken"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="interactive token" />
+
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="intune app protection" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:id="@+id/buttonIntuneInit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="init" />
+
+            <Button
+                android:id="@+id/buttonIntuneRegisterNotification"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="register notification" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:id="@+id/buttonIntuneRegisterMam"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="register mam" />
+
+            <Button
+                android:id="@+id/buttonIntuneGetMamStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="get mam status" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/buttonIntuneRemediateCompliance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="remediate compliance" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="account" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/buttonAccountGet"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="get" />
+
+            <Button
+                android:id="@+id/buttonAccountClear"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="clear" />
+
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="web" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:id="@+id/buttonWebLoad"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="load" />
+
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="log" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:id="@+id/buttonLogShow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="show" />
+
+            <Button
+                android:id="@+id/buttonLogClear"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="clear" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- WebView部分 -->
+
+    <WebView
+        android:id="@+id/webView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+</LinearLayout>

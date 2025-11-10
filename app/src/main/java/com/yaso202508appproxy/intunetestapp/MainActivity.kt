@@ -1,5 +1,6 @@
 package com.yaso202508appproxy.intunetestapp
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.webkit.WebView
@@ -14,35 +15,17 @@ import androidx.lifecycle.lifecycleScope
 import com.yaso202508appproxy.intunetestapp.auth.AuthResult
 import com.yaso202508appproxy.intunetestapp.auth.AuthService
 import com.yaso202508appproxy.intunetestapp.auth.CheckPermissionResult
-import com.yaso202508appproxy.intunetestapp.auth.TestAuthService
+import com.yaso202508appproxy.intunetestapp.ui0test.TestActivity
+import com.yaso202508appproxy.intunetestapp.ui1auto.AutoLaunchActivity
 import com.yaso202508appproxy.intunetestapp.web.WebViewWrapper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var webViewWrapper: WebViewWrapper
 
-    private lateinit var authScopesSelectDialog: AuthScopesSelectDialog
-
-    private lateinit var btnInit: Button
-    private lateinit var btnSetAccount: Button
-    private lateinit var btnWaitReady: Button
-
-    private lateinit var btnSignIn: Button
-    private lateinit var btnMamRegister: Button
-    private lateinit var btnMamStatus: Button
-
-    private lateinit var btnUser: Button
-    private lateinit var btnAuth: Button
-    private lateinit var btnClearAccount: Button
-
-    private lateinit var btnWeb: Button
-    private lateinit var btnLogShow: Button
-    private lateinit var btnLogClear: Button
-
-    private val logHistory = StringBuilder()
-    private val logger = createLogger("Main")
+    private lateinit var buttonUi0: Button
+    private lateinit var buttonUi1: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,227 +37,20 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-        WebView.setWebContentsDebuggingEnabled(true)
-        AuthService.setLogger(createLogger("Auth"))
-
         initViews()
     }
 
-    /**
-     * アプリケーション終了時にリソース解放
-     */
-    override fun onDestroy() {
-        AuthService.close()
-
-        super.onDestroy()
-    }
-
     private fun initViews() {
-        webViewWrapper = WebViewWrapper(findViewById(R.id.webView))
-        webViewWrapper.setLogger(createLogger("Web"))
-
-        authScopesSelectDialog = AuthScopesSelectDialog(this)
-
-        btnInit = findViewById(R.id.btnInit)
-        btnInit.setOnClickListener {
-            lifecycleScope.launch {
-                try {
-                    val result = AuthService.initialize(applicationContext)
-                    showMsg("initialize: ${result.isSuccessStr()}")
-                } catch (exception: Exception) {
-                    logger.error("initialize", exception)
-                }
-            }
+        buttonUi0 = findViewById(R.id.buttonUi0)
+        buttonUi0.setOnClickListener {
+            val intent = Intent(this, TestActivity::class.java)
+            startActivity(intent)
         }
 
-        btnSetAccount = findViewById(R.id.btnSetAccount)
-        btnSetAccount.setOnClickListener {
-            authScopesSelectDialog.show { scopes ->
-                lifecycleScope.launch {
-                    try {
-                        val account = AuthService.setAccount(scopes, this@MainActivity)
-                        showMsg("setAccount: ${account?.username}")
-                    } catch (exception: Exception) {
-                        logger.error("setAccount", exception)
-                    }
-                }
-            }
-        }
-
-        btnWaitReady = findViewById(R.id.btnWaitReady)
-        btnWaitReady.setOnClickListener {
-            authScopesSelectDialog.show { scopes ->
-                lifecycleScope.launch {
-                    try {
-                        val checkResult = withContext(Dispatchers.IO) {
-                            AuthService.checkPermission(scopes, 5000L, 500L)
-                        }
-
-                        when (checkResult) {
-                            is CheckPermissionResult.Success -> {
-                                showMsg("WaitForReady: success")
-                            }
-                            is CheckPermissionResult.Failure.Timeout -> {
-                                showMsg("WaitForReady: timeout")
-                            }
-                            is CheckPermissionResult.Failure.MfaRequired -> {
-                                showMsg("WaitForReady: MFA required")
-                            }
-                            else -> {
-                                showMsg("WaitForReady: auth failed")
-                            }
-                        }
-                    } catch (exception: Exception) {
-                        logger.error("WaitForReady", exception)
-                    }
-                }
-            }
-        }
-
-        btnSignIn = findViewById(R.id.btnSignIn)
-        btnSignIn.setOnClickListener {
-            authScopesSelectDialog.show { scopes ->
-                lifecycleScope.launch {
-                    try {
-                        val account = TestAuthService.signIn(scopes, this@MainActivity)
-                        showMsg("signIn: ${account?.username}")
-                    } catch (exception: Exception) {
-                        logger.error("signIn", exception)
-                    }
-                }
-            }
-        }
-
-        btnMamRegister = findViewById(R.id.btnMamRegister)
-        btnMamRegister.setOnClickListener {
-            lifecycleScope.launch {
-                try {
-                    val result = TestAuthService.registerMam()
-                    showMsg("registerMam: ${result.isSuccessStr()}")
-                } catch (exception: Exception) {
-                    logger.error("registerMam", exception)
-                }
-            }
-        }
-
-        btnMamStatus = findViewById(R.id.btnMamStatus)
-        btnMamStatus.setOnClickListener {
-            lifecycleScope.launch {
-                try {
-                    val status = TestAuthService.getMamStatus()
-                    showMsg("getMamStatus: ${status?.name}")
-                } catch (exception: Exception) {
-                    logger.error("getMamStatus", exception)
-                }
-            }
-        }
-
-        btnUser = findViewById(R.id.btnUser)
-        btnUser.setOnClickListener {
-            lifecycleScope.launch {
-                try {
-                    val account = AuthService.getAccount()
-                    if (account == null) {
-                        showMsg("userInfo: null")
-                    } else {
-                        showMsgDialog("userInfo", account.toLog())
-                    }
-                } catch (exception: Exception) {
-                    logger.error("userInfo", exception)
-                }
-            }
-        }
-
-        btnAuth = findViewById(R.id.btnAuth)
-        btnAuth.setOnClickListener {
-            authScopesSelectDialog.show { scopes ->
-                lifecycleScope.launch {
-                    try {
-                        val authResult = withContext(Dispatchers.IO) {
-                            AuthService.acquireAuth(scopes)
-                        }
-                        if (authResult !is AuthResult.Success) {
-                            showMsg("authInfo: null")
-                        } else {
-                            showMsgDialog("authInfo", authResult.info.toLog())
-                        }
-                    } catch (exception: Exception) {
-                        logger.error("btnAuth", exception)
-                    }
-                }
-            }
-        }
-
-        btnClearAccount = findViewById(R.id.btnClearAccount)
-        btnClearAccount.setOnClickListener {
-            lifecycleScope.launch {
-                try {
-                    val result = AuthService.clearAccount()
-                    showMsg("clearAccount: ${result.isSuccessStr()}")
-                } catch (exception: Exception) {
-                    logger.error("clearAccount", exception)
-                }
-            }
-        }
-
-        btnWeb = findViewById(R.id.btnWeb)
-        btnWeb.setOnClickListener {
-            lifecycleScope.launch {
-                try {
-                    webViewWrapper.load()
-                } catch (exception: Exception) {
-                    logger.error("loadWeb", exception)
-                }
-            }
-        }
-
-        btnLogShow = findViewById(R.id.btnLogShow)
-        btnLogShow.setOnClickListener {
-            try {
-                showLog()
-            } catch (exception: Exception) {
-                logger.error("showLog", exception)
-            }
-        }
-
-        btnLogClear = findViewById(R.id.btnLogClear)
-        btnLogClear.setOnClickListener {
-            try {
-                logHistory.clear()
-                showMsg("clearLog: Done")
-            } catch (exception: Exception) {
-                logger.error("clearLog", exception)
-            }
+        buttonUi1 = findViewById(R.id.buttonUi1)
+        buttonUi1.setOnClickListener {
+            val intent = Intent(this, AutoLaunchActivity::class.java)
+            startActivity(intent)
         }
     }
-
-    private fun createLogger(tag: String): AppLogger = object : AppLogger {
-        override fun info(msg: String) {
-            Log.d(tag, msg)
-            logHistory.appendLine("[$tag] $msg")
-        }
-
-        override fun error(msg: String, exception: java.lang.Exception?) {
-            Log.e(tag, msg, exception)
-            val log = "[$tag] $msg ${exception ?: ""}"
-            logHistory.appendLine(log)
-            showMsg(log)
-        }
-    }
-
-    private fun showMsg(msg: String) {
-        lifecycleScope.launch {
-            Toast.makeText(applicationContext, msg, Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun showMsgDialog(title: String, msg: String) {
-        AlertDialog.Builder(this@MainActivity)
-            .setTitle(title)
-            .setMessage(msg)
-            .setPositiveButton("OK", null)
-            .show()
-    }
-
-    private fun showLog() = showMsgDialog("log", logHistory.toString())
 }

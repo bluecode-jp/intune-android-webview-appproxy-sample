@@ -1,168 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:background="#B2EBF2">
 
-    <!-- ネイティブ画面部分 -->
-    <TableLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:background="#80D8FF"
-        android:stretchColumns="*">
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:text="Intune Android WebView AppProxy Sample"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-        <TableRow
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
+    <Button
+        android:id="@+id/buttonUi0"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="検証用"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="prepare" />
-        </TableRow>
-
-        <TableRow
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <Button
-                android:id="@+id/btnInit"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Initialize" />
-
-            <Button
-                android:id="@+id/btnSetAccount"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Set Account" />
-
-            <Button
-                android:id="@+id/btnWaitReady"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Wait Ready" />
-        </TableRow>
-
-        <TableRow
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_span="3"
-                android:text="- set account step by step -" />
-        </TableRow>
-
-        <TableRow
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <Button
-                android:id="@+id/btnSignIn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="#8C9EFF"
-                android:text="Sign In" />
-
-            <Button
-                android:id="@+id/btnMamRegister"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="#8C9EFF"
-                android:text="MAM Register" />
-
-            <Button
-                android:id="@+id/btnMamStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="#8C9EFF"
-                android:text="MAM Status" />
-
-        </TableRow>
-
-        <TableRow
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="load" />
-        </TableRow>
-
-        <TableRow
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <Button
-                android:id="@+id/btnWeb"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Web" />
-
-            <Button
-                android:id="@+id/btnLogShow"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Show Log" />
-
-            <Button
-                android:id="@+id/btnLogClear"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Clear Log" />
-
-        </TableRow>
-
-        <TableRow
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="account" />
-        </TableRow>
-
-        <TableRow
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <Button
-                android:id="@+id/btnUser"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="User Info" />
-
-            <Button
-                android:id="@+id/btnAuth"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Auth Info" />
-
-            <Button
-                android:id="@+id/btnClearAccount"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Clear Account" />
-
-        </TableRow>
-
-    </TableLayout>
-
-    <!-- 区切り線 -->
-
-    <!-- WebView部分 -->
-
-    <WebView
-        android:id="@+id/webView"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
-
-</LinearLayout>
+    <Button
+        android:id="@+id/buttonUi1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="パターン１"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/buttonUi0" />
+</androidx.constraintlayout.widget.ConstraintLayout>
