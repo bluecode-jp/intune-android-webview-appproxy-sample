@@ -1,6 +1,5 @@
 package com.yaso202508appproxy.intunetestapp.ui1auto
 
-import android.content.ActivityNotFoundException
 import android.content.DialogInterface.OnClickListener
 import android.content.Intent
 import android.os.Bundle
@@ -17,7 +16,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.microsoft.identity.client.IAccount
 import com.yaso202508appproxy.intunetestapp.AuthScopes
-import com.yaso202508appproxy.intunetestapp.BuildConfig
 import com.yaso202508appproxy.intunetestapp.R
 import com.yaso202508appproxy.intunetestapp.auth.AuthService
 import com.yaso202508appproxy.intunetestapp.auth.CheckPermissionResult
@@ -26,8 +24,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.core.net.toUri
+import com.yaso202508appproxy.intunetestapp.auth.internal.IntuneAppProtection
+import com.yaso202508appproxy.intunetestapp.toLog
 
 class AutoLaunchActivity : AppCompatActivity() {
+
     private lateinit var lytLoading: LinearLayout
 
     private lateinit var lytRetry: LinearLayout
@@ -62,6 +63,9 @@ class AutoLaunchActivity : AppCompatActivity() {
         // ログ設定
         AuthService.setLogger(createLogger("Auth"))
         webViewWrapper.setLogger(createLogger("Web"))
+
+        // DEBUG
+        initDebug()
 
         // 起動
         handleBoot()
@@ -169,7 +173,7 @@ class AutoLaunchActivity : AppCompatActivity() {
      */
     private suspend fun autoLaunch() {
         showLoadingLayout()
-        if (!initializeAuth()) return
+        initializeAuth()
         setupAccount() ?: return
         openWebsite()
     }
@@ -177,16 +181,8 @@ class AutoLaunchActivity : AppCompatActivity() {
     /**
      * 認証サービス初期化
      */
-    private suspend fun initializeAuth(): Boolean {
-        val success = AuthService.initialize(applicationContext)
-        if (!success) {
-            showDialog(
-                "予期せぬエラー",
-                "予期せぬエラーが発生しました。アプリケーション管理者にお問い合わせください。"
-            )
-            showRetryLayout(false)
-        }
-        return success
+    private suspend fun initializeAuth() {
+        AuthService.initialize(applicationContext)
     }
 
     /**
@@ -229,6 +225,7 @@ class AutoLaunchActivity : AppCompatActivity() {
                 showDialog(
                     "アクセス権限確認エラー",
                     "Edgeブラウザにサインインして2段階認証を実施してください。"
+                    + System.lineSeparator() + checkResult.exception.toString() // DEBUG
                 ) { _, _ -> launchEdgeForMfa() }
                 showRetryLayout(true)
             }
@@ -236,6 +233,7 @@ class AutoLaunchActivity : AppCompatActivity() {
                 showDialog(
                     "アクセス権限確認エラー",
                     "アクセス権限がありません。アプリケーション管理者にお問い合わせいただくか、別のアカウントをご利用ください。"
+                    + System.lineSeparator() + checkResult.authResult.toLog() // DEBUG
                 )
                 showRetryLayout(true)
             }
@@ -246,12 +244,11 @@ class AutoLaunchActivity : AppCompatActivity() {
      * MFAのためにEdgeを起動する
      */
     private fun launchEdgeForMfa() {
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, "https://www.aeon.info".toUri())
-            intent.setPackage("com.microsoft.emmx")
-            startActivity(intent)
-        } catch (exception: ActivityNotFoundException) {
-            logger.error("launchEdge", exception)
+        val edgeIntent = packageManager.getLaunchIntentForPackage("com.microsoft.emmx")
+
+        if (edgeIntent != null) {
+            startActivity(edgeIntent)
+        } else {
             val playStoreIntent = Intent(Intent.ACTION_VIEW,
                 "market://details?id=com.microsoft.emmx".toUri())
             startActivity(playStoreIntent)
@@ -322,5 +319,50 @@ class AutoLaunchActivity : AppCompatActivity() {
             .setPositiveButton("OK", onConfirm )
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    // DEBUG
+
+    private lateinit var btnDebug: Button
+    private lateinit var txtDebug: TextView
+
+    private fun initDebug() {
+        btnDebug = findViewById(R.id.btnDebug)
+        txtDebug = findViewById(R.id.txtDebug)
+        txtDebug.text = ""
+
+        IntuneAppProtection.initialize()
+        IntuneAppProtection.registerNotification(
+            { _ ->  },
+            { notification ->
+                runOnUiThread {
+                    txtDebug.text = arrayOf(
+                        "intune compliance notification received",
+                        "- status: ${notification.complianceStatus.name}",
+                        "- title: ${notification.complianceErrorTitle}",
+                        "- message: ${notification.complianceErrorMessage}"
+                    ).joinToString(System.lineSeparator())
+                }
+            }
+        )
+
+        btnDebug.setOnClickListener {
+            lifecycleScope.launch {
+                try {
+                    txtDebug.text = ""
+
+                    val account = AuthService.getAccount()
+                    if (account == null) {
+                        showDialog("debug", "account is null")
+                        return@launch
+                    }
+
+                    IntuneAppProtection.remediateCompliance(account)
+                } catch (e: Exception) {
+                    logger.error("debug", e)
+                    showDialog("debug", e.toString())
+                }
+            }
+        }
     }
 }

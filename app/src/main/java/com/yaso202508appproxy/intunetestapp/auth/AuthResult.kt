@@ -19,10 +19,6 @@ sealed class AuthResult {
      * 失敗
      */
     sealed class Failure : AuthResult() {
-        /**
-         * また初期化されていない
-         */
-        data object NotInitialized : Failure()
 
         /**
          * アカウントなし

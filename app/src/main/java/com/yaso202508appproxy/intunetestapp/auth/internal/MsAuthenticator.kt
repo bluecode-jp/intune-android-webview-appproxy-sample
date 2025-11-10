@@ -2,6 +2,7 @@ package com.yaso202508appproxy.intunetestapp.auth.internal
 
 import android.app.Activity
 import android.content.Context
+import com.microsoft.identity.client.AcquireTokenParameters
 import com.microsoft.identity.client.AcquireTokenSilentParameters
 import com.microsoft.identity.client.AuthenticationCallback
 import com.microsoft.identity.client.IAccount
@@ -21,9 +22,10 @@ import com.yaso202508appproxy.intunetestapp.auth.AuthResult
 import com.yaso202508appproxy.intunetestapp.toLog
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 object MsAuthenticator {
-    private var msalApp: ISingleAccountPublicClientApplication? = null
+    private lateinit var msalApp: ISingleAccountPublicClientApplication
     private var logger: AppLogger? = null
 
     /**
@@ -33,7 +35,7 @@ object MsAuthenticator {
      */
     private suspend fun createMsalApp(
         context: Context
-    ): ISingleAccountPublicClientApplication? = suspendCancellableCoroutine { continuation ->
+    ): ISingleAccountPublicClientApplication = suspendCancellableCoroutine { continuation ->
         PublicClientApplication.createSingleAccountPublicClientApplication(
             context,
             R.raw.msal_config,
@@ -41,17 +43,17 @@ object MsAuthenticator {
                 override fun onCreated(application: ISingleAccountPublicClientApplication?) {
                     if (application != null) {
                         logger?.info("createMsalApp: created")
+                        continuation.resume(application)
                     } else {
                         logger?.error("createMsalApp: null")
+                        continuation.resumeWithException(Exception("msal app is null"))
                     }
-                    continuation.resume(application)
                 }
 
                 override fun onError(exception: MsalException?) {
                     logger?.error("createMsalApp", exception)
-                    continuation.resume(null)
+                    continuation.resumeWithException(exception ?: Exception("msal app is null"))
                 }
-
             }
         )
     }
@@ -60,10 +62,8 @@ object MsAuthenticator {
      * 初期化
      * - contextにはapplicationContextを設定すること
      */
-    suspend fun initialize(context: Context): Boolean {
-        val app = createMsalApp(context)
-        msalApp = app
-        return app != null
+    suspend fun initialize(context: Context) {
+        msalApp = createMsalApp(context)
     }
 
     /**
@@ -71,14 +71,8 @@ object MsAuthenticator {
      * - onAccountChangedでは値を戻す処理は不要（onAccountLoadedも必ず呼ばれるため）
      */
     suspend fun getAccount(): IAccount? {
-        val app = msalApp
-        if (app == null) {
-            logger?.error("getAccount: msal app is null")
-            return null
-        }
-
         return suspendCancellableCoroutine { continuation ->
-            app.getCurrentAccountAsync(object : CurrentAccountCallback {
+            msalApp.getCurrentAccountAsync(object : CurrentAccountCallback {
                 override fun onAccountLoaded(activeAccount: IAccount?) {
                     logger?.info("getAccount.onAccountLoaded: account is ${activeAccount?.username}")
                     continuation.resume(activeAccount)
@@ -101,12 +95,6 @@ object MsAuthenticator {
      * - サインインおよびアクセストークン取得に利用
      */
     suspend fun silentAuth(scopes: List<String>): AuthResult {
-        val app = msalApp
-        if (app == null) {
-            logger?.error("silentAuth: msal app is null")
-            return AuthResult.Failure.NotInitialized
-        }
-
         val account = getAccount()
         if (account == null) {
             logger?.error(  "silentAuth: account is null")
@@ -114,7 +102,7 @@ object MsAuthenticator {
         }
 
         return suspendCancellableCoroutine { continuation ->
-            app.acquireTokenSilentAsync(
+            msalApp.acquireTokenSilentAsync(
                 AcquireTokenSilentParameters.Builder()
                     .forAccount(account)
                     .fromAuthority(account.authority)
@@ -146,17 +134,58 @@ object MsAuthenticator {
     }
 
     /**
-     * 画面操作でサインイン
+     * 画面操作でアクセストークン取得
      */
-    suspend fun interactiveSignIn(scopes: List<String>, activity: Activity): AuthResult {
-        val app = msalApp
-        if (app == null) {
-            logger?.error("signIn: msal app is null")
-            return AuthResult.Failure.NotInitialized
+    suspend fun interactiveToken(scopes: List<String>, activity: Activity): AuthResult {
+        val account = getAccount()
+        if (account == null) {
+            logger?.error(  "interactiveToken: account is null")
+            return AuthResult.Failure.NoAccount
         }
 
         return suspendCancellableCoroutine { continuation ->
-            app.signIn(
+            msalApp.acquireToken(
+                AcquireTokenParameters.Builder()
+                    .forAccount(account)
+                    .fromAuthority(account.authority)
+                    .startAuthorizationFromActivity(activity)
+                    .withScopes(scopes)
+                    .withCallback(object : AuthenticationCallback {
+                        override fun onSuccess(authenticationResult: IAuthenticationResult?) {
+                            if (authenticationResult != null) {
+                                logger?.info("interactiveToken: success${System.lineSeparator()}${authenticationResult.toLog()}")
+                                continuation.resume(AuthResult.Success(authenticationResult))
+                            } else {
+                                logger?.error("interactiveToken: result is null")
+                                continuation.resume(AuthResult.Failure.NoResult)
+                            }
+                        }
+
+                        override fun onError(exception: MsalException?) {
+                            logger?.error("interactiveToken", exception)
+
+                            if (exception is MsalUiRequiredException) {
+                                continuation.resume(AuthResult.Failure.UiRequired(exception))
+                            } else {
+                                continuation.resume(AuthResult.Failure.Unknown(exception))
+                            }
+                        }
+
+                        override fun onCancel() {
+                            continuation.resume(AuthResult.Failure.Canceled)
+                        }
+                    })
+                    .build()
+            )
+        }
+    }
+
+    /**
+     * 画面操作でサインイン
+     */
+    suspend fun interactiveSignIn(scopes: List<String>, activity: Activity): AuthResult {
+        return suspendCancellableCoroutine { continuation ->
+            msalApp.signIn(
                 SignInParameters.builder()
                     .withActivity(activity)
                     .withScopes(scopes)
@@ -204,12 +233,6 @@ object MsAuthenticator {
      * - サインアウトしたアカウントを戻す
      */
     suspend fun signOut(): IAccount? {
-        val app = msalApp
-        if (app == null) {
-            logger?.error("signOut: msal app is null")
-            return null
-        }
-
         val account = getAccount()
         if (account == null) {
             logger?.error("signOut: account is null")
@@ -217,7 +240,7 @@ object MsAuthenticator {
         }
 
         return suspendCancellableCoroutine { continuation ->
-            app.signOut(object : SignOutCallback {
+            msalApp.signOut(object : SignOutCallback {
                 override fun onSignOut() {
                     logger?.info( "signOut: success")
                     continuation.resume(account)

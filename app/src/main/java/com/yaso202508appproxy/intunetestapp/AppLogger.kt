@@ -2,6 +2,7 @@ package com.yaso202508appproxy.intunetestapp
 
 import com.microsoft.identity.client.IAccount
 import com.microsoft.identity.client.IAuthenticationResult
+import com.yaso202508appproxy.intunetestapp.auth.AuthResult
 import java.lang.Exception
 import java.text.SimpleDateFormat
 
@@ -28,3 +29,40 @@ fun IAccount.toLog() = arrayOf(
     "- tenantId = ${this.tenantId}",
     "- idToken = ${this.idToken?.truncate()}",
 ).joinToString(System.lineSeparator())
+
+fun AuthResult.toLog(): String {
+    return when (this) {
+        is AuthResult.Success -> {
+            arrayOf(
+                "result: SUCCESS",
+                this.info.toLog()
+            ).joinToString(System.lineSeparator())
+        }
+
+        is AuthResult.Failure.NoAccount -> {
+            "result: NO ACCOUNT"
+        }
+
+        is AuthResult.Failure.Canceled -> {
+            "result: CANCELED"
+        }
+
+        is AuthResult.Failure.NoResult -> {
+            "result: NO RESULT"
+        }
+
+        is AuthResult.Failure.UiRequired -> {
+            arrayOf(
+                "result: UI REQUIRED",
+                this.exception.toString()
+            ).joinToString(System.lineSeparator())
+        }
+
+        is AuthResult.Failure.Unknown -> {
+            arrayOf(
+                "result: UNKNOWN",
+                this.exception.toString()
+            ).joinToString(System.lineSeparator())
+        }
+    }
+}

@@ -2,23 +2,32 @@ package com.yaso202508appproxy.intunetestapp.auth.internal
 
 import com.microsoft.identity.client.IAccount
 import com.microsoft.intune.mam.client.app.MAMComponents
+import com.microsoft.intune.mam.client.notification.MAMNotificationReceiver
+import com.microsoft.intune.mam.client.notification.MAMNotificationReceiverRegistry
+import com.microsoft.intune.mam.policy.MAMComplianceManager
 import com.microsoft.intune.mam.policy.MAMEnrollmentManager
 import com.microsoft.intune.mam.policy.MAMServiceAuthenticationCallback
+import com.microsoft.intune.mam.policy.notification.MAMComplianceNotification
+import com.microsoft.intune.mam.policy.notification.MAMEnrollmentNotification
+import com.microsoft.intune.mam.policy.notification.MAMNotification
+import com.microsoft.intune.mam.policy.notification.MAMNotificationType
 import com.yaso202508appproxy.intunetestapp.AppLogger
 import com.yaso202508appproxy.intunetestapp.auth.AuthResult
 
 object IntuneAppProtection {
-    private var mamEnrollmentManager: MAMEnrollmentManager? = null
+    private lateinit var mamEnrollmentManager: MAMEnrollmentManager
+    private lateinit var mamComplianceManager: MAMComplianceManager
+    private lateinit var mamNotificationReceiverRegistry: MAMNotificationReceiverRegistry
     private var logger: AppLogger? = null
 
     /**
      * MAMEnrollmentManagerを作成
      */
-    private fun createMamEnrollManager(): MAMEnrollmentManager? {
+    private fun createMamEnrollManager(): MAMEnrollmentManager {
         val manager = MAMComponents.get(MAMEnrollmentManager::class.java)
         if (manager == null) {
-            logger?.error("createMamEnrollManager: MAMEnrollmentManager Not Found")
-            return null
+            logger?.error("createMamEnrollManager: MAMEnrollmentManager is null")
+            throw Exception("MAMEnrollmentManager is null")
         }
 
         manager.registerAuthenticationCallback(object : MAMServiceAuthenticationCallback {
@@ -38,80 +47,101 @@ object IntuneAppProtection {
     }
 
     /**
+     * MAMComplianceManagerを作成
+     */
+    private fun createMamComplianceManager(): MAMComplianceManager {
+        val manager = MAMComponents.get(MAMComplianceManager::class.java)
+        if (manager == null) {
+            logger?.error("createMamComplianceManager: MAMComplianceManager is null")
+            throw Exception("MAMComplianceManager is null")
+        }
+        return manager
+    }
+
+    /**
+     * MAMNotificationReceiverRegistryを作成
+     */
+    private fun createMamNotificationReceiverRegistry(): MAMNotificationReceiverRegistry {
+        val registry = MAMComponents.get(MAMNotificationReceiverRegistry::class.java)
+        if (registry == null) {
+            logger?.error("createMamNotificationReceiverRegistry: MAMNotificationReceiverRegistry is null")
+            throw Exception("MAMNotificationReceiverRegistry is null")
+        }
+        return registry
+    }
+
+    /**
      * 初期化
      */
-    fun initialize(): Boolean {
-        val manager = createMamEnrollManager()
-        mamEnrollmentManager = manager
-        return manager != null
+    fun initialize() {
+        mamEnrollmentManager = createMamEnrollManager()
+        mamComplianceManager = createMamComplianceManager()
+        mamNotificationReceiverRegistry = createMamNotificationReceiverRegistry()
     }
 
     /**
      * MAM登録
      */
-    suspend fun registerMam(): Boolean {
-        val manager = mamEnrollmentManager
-        if (manager == null) {
-            logger?.error("registerMam: MAMEnrollmentManager is null")
-            return false
-        }
-
-        val account = MsAuthenticator.getAccount()
-        if (account == null) {
-            logger?.error("registerMam: account is null")
-            return false
-        }
-
-        manager.registerAccountForMAM(
+    fun registerMam(account: IAccount) {
+        mamEnrollmentManager.registerAccountForMAM(
             account.username,
             account.id,
             account.tenantId,
             account.authority
         )
-        logger?.info("registerMam: Done")
-        return true
     }
 
     /**
      * MAM登録解除
      */
-    fun unregisterMam(account: IAccount): Boolean {
-        val manager = mamEnrollmentManager
-        if (manager == null) {
-            logger?.error("unregisterMam: MAMEnrollmentManager is null")
-            return false
-        }
-
-        manager.unregisterAccountForMAM(
+    fun unregisterMam(account: IAccount) {
+        mamEnrollmentManager.unregisterAccountForMAM(
             account.username,
             account.id
         )
-        logger?.info("unregisterMam: Done")
-        return true
     }
 
     /**
      * MAM登録状態を取得
      */
-    suspend fun getMamStatus(): MAMEnrollmentManager.Result? {
-        val manager = mamEnrollmentManager
-        if (manager == null) {
-            logger?.error("getMamStatus: MAMEnrollmentManager is null")
-            return null
-        }
-
-        val account = MsAuthenticator.getAccount()
-        if (account == null) {
-            logger?.error("getMamStatus: account is null")
-            return null
-        }
-
-        val result = manager.getRegisteredAccountStatus(
+    fun getMamStatus(account: IAccount): MAMEnrollmentManager.Result? {
+        val result = mamEnrollmentManager.getRegisteredAccountStatus(
             account.username,
             account.id
         )
         logger?.info("getMamStatus: ${result?.name}")
         return result
+    }
+
+    fun remediateCompliance(account: IAccount) {
+        mamComplianceManager.remediateCompliance(
+            account.username,
+            account.id,
+            account.tenantId,
+            account.authority,
+            true
+        )
+    }
+
+    fun registerNotification(
+        onReceiveEnrollmentResult: (notification: MAMEnrollmentNotification) -> Unit,
+        onReceiveComplianceStatus: (notification: MAMComplianceNotification) -> Unit,
+    ) {
+        mamNotificationReceiverRegistry.registerReceiver(
+            { notification ->
+                onReceiveEnrollmentResult(notification as MAMEnrollmentNotification)
+                true
+            },
+            MAMNotificationType.MAM_ENROLLMENT_RESULT
+        )
+
+        mamNotificationReceiverRegistry.registerReceiver(
+            { notification ->
+                onReceiveComplianceStatus(notification as MAMComplianceNotification)
+                true
+            },
+            MAMNotificationType.COMPLIANCE_STATUS
+        )
     }
 
     fun setLogger(logger: AppLogger) {

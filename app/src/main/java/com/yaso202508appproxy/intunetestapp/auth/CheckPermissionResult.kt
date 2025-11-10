@@ -15,10 +15,20 @@ sealed class CheckPermissionResult {
      * 失敗
      */
     sealed class Failure : CheckPermissionResult() {
+
+        /**
+         * タイムアウト
+         */
         data object Timeout: Failure()
 
+        /**
+         * MFA要求
+         */
         data class MfaRequired(val exception: MsalUiRequiredException) : Failure()
 
+        /**
+         * 認証エラー
+         */
         data class AuthFailed(val authResult: AuthResult.Failure) : Failure()
     }
 }

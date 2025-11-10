@@ -52,19 +52,16 @@ class WebViewWrapper(private val webView: WebView) {
                 ): WebResourceResponse? {
                     return try {
                         if (request != null && shouldAddToken(request)) {
-                            val token = AuthService.acquireToken(AuthScopes.PROXY.scopes)
-
-                            return if (token == null) {
-                                super.shouldInterceptRequest(view, request)
-                            } else {
-                                sendRequestWithToken(request, token)
-                            }
+                            sendRequestWithToken(request)
                         } else {
                             super.shouldInterceptRequest(view, request)
                         }
                     } catch(exception: Exception) {
                         logger?.error("shouldInterceptRequest", exception)
-                        super.shouldInterceptRequest(view, request)
+                        if (view != null && request != null) {
+                            showErrorPage(view, request, exception)
+                        }
+                        WebResourceResponse(null, null, null)
                     }
                 }
             }
@@ -98,13 +95,22 @@ class WebViewWrapper(private val webView: WebView) {
             return false
         }
 
-        return request.method in listOf("GET", "HEAD")
+        if (request.method !in listOf("GET", "HEAD")) {
+            throw Exception("${request.method} should be handled in intercept_request.js")
+        }
+
+        return true
     }
 
     /**
      * Authorizationヘッダーにアクセストークンを付与して書き換えたHTTPリクエストを送信する
      */
-    private fun sendRequestWithToken(originalRequest: WebResourceRequest, token: String): WebResourceResponse {
+    private fun sendRequestWithToken(originalRequest: WebResourceRequest): WebResourceResponse {
+        val token = AuthService.acquireToken(AuthScopes.PROXY.scopes)
+        if (token == null) {
+            throw Exception("acquire token failed")
+        }
+
         val connection = URL(originalRequest.url.toString()).openConnection() as HttpURLConnection
 
         connection.requestMethod = originalRequest.method
@@ -149,6 +155,12 @@ class WebViewWrapper(private val webView: WebView) {
             connection.inputStream
         }
 
+        logger?.info("method=${originalRequest.method} url=${originalRequest.url} status=$statusCode")
+
+        if (300 <= statusCode && statusCode < 400) {
+            throw Exception("status code $statusCode not allowed")
+        }
+
         return WebResourceResponse(
             mimeType,
             encoding,
@@ -174,6 +186,42 @@ class WebViewWrapper(private val webView: WebView) {
             404 -> "Not Found"
             500 -> "Internal Server Error"
             else -> "Unknown"
+        }
+    }
+
+    /**
+     * shouldInterceptRequestで予期せぬ例外が発生した時に
+     * エラーページを表示する
+     */
+    private fun showErrorPage(
+        view: WebView,
+        request: WebResourceRequest,
+        exception: Exception
+        ) {
+        view.post {
+            val html = """
+                <html>
+                    <head>
+                        <meta charset='UTF-8'>
+                        <title>Error</title>
+                    </head>
+                    <body style='font-family:sans-serif; padding:20px; background-color:#f8f8f8;'>
+                        <h2>WebView.shouldInterceptRequestでエラーが発生しました</h2>
+                        <p><strong>Method:</strong> ${request.method}</p>
+                        <p><strong>URL:</strong> ${request.url}</p>
+                        <p><strong>Message:</strong> ${exception.message ?: "Unknown error"}</p>
+                    </body>
+                </html>
+            """
+
+            view.stopLoading()
+            view.loadDataWithBaseURL(
+                "about:blank",
+                html,
+                "text/html",
+                "UTF-8",
+                null
+            )
         }
     }
 

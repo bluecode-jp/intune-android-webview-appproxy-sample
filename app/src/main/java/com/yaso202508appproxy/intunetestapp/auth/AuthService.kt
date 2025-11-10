@@ -22,18 +22,9 @@ object AuthService {
      * 初期化
      * - contextにはapplicationContextを設定すること
      */
-    suspend fun initialize(context: Context): Boolean {
-        var result = MsAuthenticator.initialize(context)
-        if (!result) {
-            return false
-        }
-
-        result = IntuneAppProtection.initialize()
-        if (!result) {
-            return false
-        }
-
-        return true
+    suspend fun initialize(context: Context) {
+        MsAuthenticator.initialize(context)
+        IntuneAppProtection.initialize()
     }
 
     /**
@@ -49,12 +40,10 @@ object AuthService {
             return null
         }
 
-        val mamResult = IntuneAppProtection.registerMam()
-        if (!mamResult) {
-            return null
-        }
+        val account = authResult.info.account
+        IntuneAppProtection.registerMam(account)
 
-        return authResult.info.account
+        return account
     }
 
     /**
@@ -66,10 +55,16 @@ object AuthService {
         timeOutMillis: Long,
         intervalMillis: Long
     ): CheckPermissionResult {
+        val account = MsAuthenticator.getAccount()
+        if (account == null) {
+            return CheckPermissionResult.Failure.AuthFailed(
+                AuthResult.Failure.NoAccount
+            )
+        }
 
         try {
             withTimeout(timeOutMillis) {
-                while (IntuneAppProtection.getMamStatus() != MAMEnrollmentManager.Result.ENROLLMENT_SUCCEEDED) {
+                while (IntuneAppProtection.getMamStatus(account) != MAMEnrollmentManager.Result.ENROLLMENT_SUCCEEDED) {
                     delay(intervalMillis)
                 }
             }
