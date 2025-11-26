@@ -46,18 +46,6 @@
             android:layout_height="wrap_content"
             android:text="別のアカウントを利用すると、セキュリティ保護のためアプリが一度終了する場合があります。その際は、再度アプリを起動してサインインしてください。 " />
 
-        <Button
-            android:id="@+id/btnDebug"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="DEBUG" />
-
-        <TextView
-            android:id="@+id/txtDebug"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="DEBUG" />
-
     </LinearLayout>
 
     <LinearLayout

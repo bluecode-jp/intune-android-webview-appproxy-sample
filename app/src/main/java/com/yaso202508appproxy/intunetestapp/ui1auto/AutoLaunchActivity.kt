@@ -64,9 +64,6 @@ class AutoLaunchActivity : AppCompatActivity() {
         AuthService.setLogger(createLogger("Auth"))
         webViewWrapper.setLogger(createLogger("Web"))
 
-        // DEBUG
-        initDebug()
-
         // 起動
         handleBoot()
     }
@@ -225,7 +222,6 @@ class AutoLaunchActivity : AppCompatActivity() {
                 showDialog(
                     "アクセス権限確認エラー",
                     "Edgeブラウザにサインインして2段階認証を実施してください。"
-                    + System.lineSeparator() + checkResult.exception.toString() // DEBUG
                 ) { _, _ -> launchEdgeForMfa() }
                 showRetryLayout(true)
             }
@@ -233,7 +229,6 @@ class AutoLaunchActivity : AppCompatActivity() {
                 showDialog(
                     "アクセス権限確認エラー",
                     "アクセス権限がありません。アプリケーション管理者にお問い合わせいただくか、別のアカウントをご利用ください。"
-                    + System.lineSeparator() + checkResult.authResult.toLog() // DEBUG
                 )
                 showRetryLayout(true)
             }
@@ -319,50 +314,5 @@ class AutoLaunchActivity : AppCompatActivity() {
             .setPositiveButton("OK", onConfirm )
             .setNegativeButton("Cancel", null)
             .show()
-    }
-
-    // DEBUG
-
-    private lateinit var btnDebug: Button
-    private lateinit var txtDebug: TextView
-
-    private fun initDebug() {
-        btnDebug = findViewById(R.id.btnDebug)
-        txtDebug = findViewById(R.id.txtDebug)
-        txtDebug.text = ""
-
-        IntuneAppProtection.initialize()
-        IntuneAppProtection.registerNotification(
-            { _ ->  },
-            { notification ->
-                runOnUiThread {
-                    txtDebug.text = arrayOf(
-                        "intune compliance notification received",
-                        "- status: ${notification.complianceStatus.name}",
-                        "- title: ${notification.complianceErrorTitle}",
-                        "- message: ${notification.complianceErrorMessage}"
-                    ).joinToString(System.lineSeparator())
-                }
-            }
-        )
-
-        btnDebug.setOnClickListener {
-            lifecycleScope.launch {
-                try {
-                    txtDebug.text = ""
-
-                    val account = AuthService.getAccount()
-                    if (account == null) {
-                        showDialog("debug", "account is null")
-                        return@launch
-                    }
-
-                    IntuneAppProtection.remediateCompliance(account)
-                } catch (e: Exception) {
-                    logger.error("debug", e)
-                    showDialog("debug", e.toString())
-                }
-            }
-        }
     }
 }
