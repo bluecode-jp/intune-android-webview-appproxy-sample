@@ -73,9 +73,6 @@ object AuthService {
         }
 
         return when (val authResult = AuthCacheManager.acquireAuth(appProxyScopes)) {
-            is AuthResult.Failure.UiRequired -> {
-                CheckPermissionResult.Failure.MfaRequired(authResult.exception)
-            }
             is AuthResult.Failure -> {
                 CheckPermissionResult.Failure.AuthFailed(authResult)
             }

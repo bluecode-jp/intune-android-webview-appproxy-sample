@@ -15,7 +15,6 @@ import com.microsoft.identity.client.PublicClientApplication
 import com.microsoft.identity.client.SignInParameters
 import com.microsoft.identity.client.SilentAuthenticationCallback
 import com.microsoft.identity.client.exception.MsalException
-import com.microsoft.identity.client.exception.MsalUiRequiredException
 import com.yaso202508appproxy.intunetestapp.AppLogger
 import com.yaso202508appproxy.intunetestapp.R
 import com.yaso202508appproxy.intunetestapp.auth.AuthResult
@@ -120,12 +119,7 @@ object MsAuthenticator {
 
                         override fun onError(exception: MsalException?) {
                             logger?.error("silentAuth", exception)
-
-                            if (exception is MsalUiRequiredException) {
-                                continuation.resume(AuthResult.Failure.UiRequired(exception))
-                            } else {
-                                continuation.resume(AuthResult.Failure.Unknown(exception))
-                            }
+                            continuation.resume(AuthResult.Failure.Unknown(exception))
                         }
                     })
                     .build()
@@ -163,12 +157,7 @@ object MsAuthenticator {
 
                         override fun onError(exception: MsalException?) {
                             logger?.error("interactiveToken", exception)
-
-                            if (exception is MsalUiRequiredException) {
-                                continuation.resume(AuthResult.Failure.UiRequired(exception))
-                            } else {
-                                continuation.resume(AuthResult.Failure.Unknown(exception))
-                            }
+                            continuation.resume(AuthResult.Failure.Unknown(exception))
                         }
 
                         override fun onCancel() {

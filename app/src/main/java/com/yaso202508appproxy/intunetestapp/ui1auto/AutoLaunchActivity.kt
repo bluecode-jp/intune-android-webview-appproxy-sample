@@ -1,7 +1,6 @@
 package com.yaso202508appproxy.intunetestapp.ui1auto
 
 import android.content.DialogInterface.OnClickListener
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.webkit.WebView
@@ -23,9 +22,6 @@ import com.yaso202508appproxy.intunetestapp.web.WebViewWrapper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.core.net.toUri
-import com.yaso202508appproxy.intunetestapp.auth.internal.IntuneAppProtection
-import com.yaso202508appproxy.intunetestapp.toLog
 
 class AutoLaunchActivity : AppCompatActivity() {
 
@@ -218,13 +214,6 @@ class AutoLaunchActivity : AppCompatActivity() {
                 )
                 showRetryLayout(true)
             }
-            is CheckPermissionResult.Failure.MfaRequired -> {
-                showDialog(
-                    "アクセス権限確認エラー",
-                    "Edgeブラウザにサインインして2段階認証を実施してください。"
-                ) { _, _ -> launchEdgeForMfa() }
-                showRetryLayout(true)
-            }
             is CheckPermissionResult.Failure.AuthFailed -> {
                 showDialog(
                     "アクセス権限確認エラー",
@@ -232,21 +221,6 @@ class AutoLaunchActivity : AppCompatActivity() {
                 )
                 showRetryLayout(true)
             }
-        }
-    }
-
-    /**
-     * MFAのためにEdgeを起動する
-     */
-    private fun launchEdgeForMfa() {
-        val edgeIntent = packageManager.getLaunchIntentForPackage("com.microsoft.emmx")
-
-        if (edgeIntent != null) {
-            startActivity(edgeIntent)
-        } else {
-            val playStoreIntent = Intent(Intent.ACTION_VIEW,
-                "market://details?id=com.microsoft.emmx".toUri())
-            startActivity(playStoreIntent)
         }
     }
 

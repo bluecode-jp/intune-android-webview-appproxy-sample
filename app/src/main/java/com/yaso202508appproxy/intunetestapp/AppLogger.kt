@@ -51,13 +51,6 @@ fun AuthResult.toLog(): String {
             "result: NO RESULT"
         }
 
-        is AuthResult.Failure.UiRequired -> {
-            arrayOf(
-                "result: UI REQUIRED",
-                this.exception.toString()
-            ).joinToString(System.lineSeparator())
-        }
-
         is AuthResult.Failure.Unknown -> {
             arrayOf(
                 "result: UNKNOWN",
