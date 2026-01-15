@@ -22,31 +22,55 @@
             android:layout_height="match_parent" />
     </LinearLayout>
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/lytRetry"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:background="#FFDDE8">
 
         <Button
             android:id="@+id/btnRetry"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="再試行" />
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp"
+            android:backgroundTint="#B60081"
+            android:text="再試行"
+            android:textColor="#FFDDE8"
+            app:layout_constraintBottom_toTopOf="@id/btnSwitchAccount"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_chainStyle="packed" />
 
         <Button
             android:id="@+id/btnSwitchAccount"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="別のアカウントを利用" />
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp"
+            android:backgroundTint="#B60081"
+            android:text="別アカウントを利用"
+            android:textColor="#FFDDE8"
+            app:layout_constraintBottom_toTopOf="@+id/txtSwitchAccount"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/btnRetry" />
 
         <TextView
             android:id="@+id/txtSwitchAccount"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="別のアカウントを利用すると、セキュリティ保護のためアプリが一度終了する場合があります。その際は、再度アプリを起動してサインインしてください。 " />
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="32dp"
+            android:layout_marginEnd="8dp"
+            android:text="※別アカウントを利用すると、セキュリティ保護のためアプリが一度終了する場合があります。\nその際は、再度アプリを起動してサインインしてください。 "
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/btnSwitchAccount" />
 
-    </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <LinearLayout
         android:id="@+id/lytWeb"

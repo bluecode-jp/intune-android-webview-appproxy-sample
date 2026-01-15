@@ -10,6 +10,7 @@ import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
@@ -27,7 +28,7 @@ class AutoLaunchActivity : AppCompatActivity() {
 
     private lateinit var lytLoading: LinearLayout
 
-    private lateinit var lytRetry: LinearLayout
+    private lateinit var lytRetry: ConstraintLayout
     private lateinit var btnRetry: Button
     private lateinit var btnSwitchAccount: Button
     private lateinit var txtSwitchAccount: TextView
@@ -143,7 +144,7 @@ class AutoLaunchActivity : AppCompatActivity() {
      */
     private fun handleSwitchAccountClick() {
         showConfirmDialog(
-            "別のアカウントを利用",
+            "別アカウントを利用",
             "セキュリティ保護のためアプリが一度終了する場合があります。続行しますか？"
         ) { _, _ ->
             lifecycleScope.launch {
